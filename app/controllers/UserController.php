@@ -12,21 +12,27 @@ class UserController extends Controller
         $this->model = new Users();
     }
 
-    public function index() {
-        $users = $this->model->all();
-        $this->render('users/index', [
-            'users' => $users,
-            'page'  => 'users',
-            'title' => 'Users | Petrol Station'
-        ]);
-    }
+public function index() {
+    $users = $this->model->all();
+    $this->render('users/index', [
+        'users' => $users,
+        'roles' => \App\Models\Users::roles(), // <-- mapa
+        'page'  => 'users',
+        'title' => 'Users | Petrol Station'
+    ]);
+}
 
-    // Carga modal de alta/edición
-    public function manage() {
-        $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
-        $user = $id ? $this->model->find($id) : null;
-        $this->render('users/manage', ['user' => $user], null, false); // sin layout (modal)
-    }
+public function manage() {
+    $id   = isset($_GET['id']) ? (int)$_GET['id'] : null;
+    $user = $id ? $this->model->find($id) : null;
+
+    $this->render('users/manage', [
+        'user'  => $user,
+        'roles' => \App\Models\Users::roles(), 
+    ], null, false);
+}
+
+
 
     public function save() {
         header('Content-Type: application/json');
