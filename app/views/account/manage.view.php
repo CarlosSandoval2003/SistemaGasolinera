@@ -1,31 +1,31 @@
-<h3>Manage Account</h3>
+<h3>Administrar Cuenta</h3>
 <hr>
 <div class="col-md-6">
   <form action="" id="user-form">
     <div class="form-group">
-      <label for="fullname" class="control-label">Full Name</label>
+      <label for="fullname" class="control-label">Nombre Completo</label>
       <input type="text" name="fullname" id="fullname" required
              class="form-control form-control-sm rounded-0"
              value="<?= htmlspecialchars($user['fullname'] ?? '') ?>">
     </div>
     <div class="form-group">
-      <label for="username" class="control-label">Username</label>
+      <label for="username" class="control-label">Usuario</label>
       <input type="text" name="username" id="username" required
              class="form-control form-control-sm rounded-0"
              value="<?= htmlspecialchars($user['username'] ?? '') ?>">
     </div>
     <div class="form-group">
-      <label for="password" class="control-label">New Password</label>
+      <label for="password" class="control-label">Nueva Contraseña</label>
       <input type="password" name="password" id="password"
              class="form-control form-control-sm rounded-0" value="">
     </div>
     <div class="form-group">
-      <label for="old_password" class="control-label">Old Password</label>
+      <label for="old_password" class="control-label">Vieja Contraseña</label>
       <input type="password" name="old_password" id="old_password"
              class="form-control form-control-sm rounded-0" value="">
     </div>
     <div class="form-group">
-      <small>Deja el campo "New Password" vacío si no quieres cambiar tu contraseña.</small>
+      <small>Deja el campo "Nueva Contraseña" vacío si no quieres cambiar tu contraseña.</small>
     </div>
     <div class="form-group d-flex w-100 justify-content-end">
       <button class="btn btn-sm btn-primary rounded-0 my-1">Update</button>

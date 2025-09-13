@@ -9,7 +9,7 @@ if (isset($_SESSION['user_id']) && $_SESSION['user_id'] > 0) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>LOGIN | Petrol Station</title>
+    <title>LOGIN | Gasolinera</title>
     <link rel="stylesheet" href="css/bootstrap.min.css">
     <script src="js/jquery-3.6.0.min.js"></script>
     <script src="js/popper.min.js"></script>
@@ -26,17 +26,17 @@ if (isset($_SESSION['user_id']) && $_SESSION['user_id'] > 0) {
 <body class="bg-dark bg-gradient">
 <div class="h-100 d-flex justify-content-center align-items-center">
     <div class="w-100">
-        <h3 class="py-5 text-center text-light">Petrol Station</h3>
+        <h3 class="py-5 text-center text-light">Gasolinera</h3>
         <div class="card my-3 col-md-4 offset-md-4">
             <div class="card-body">
                 <form action="" id="login-form">
-                    <center><small>Please enter your credentials.</small></center>
+                    <center><small>Por favor, ingresa tus credenciales.</small></center>
                     <div class="form-group">
-                        <label for="username" class="control-label">Username</label>
+                        <label for="username" class="control-label">Usuario</label>
                         <input type="text" id="username" autofocus name="username" class="form-control form-control-sm rounded-0" required>
                     </div>
                     <div class="form-group">
-                        <label for="password" class="control-label">Password</label>
+                        <label for="password" class="control-label">Contraseña</label>
                         <input type="password" id="password" name="password" class="form-control form-control-sm rounded-0" required>
                     </div>
                     <div class="form-group d-flex w-100 justify-content-end">
