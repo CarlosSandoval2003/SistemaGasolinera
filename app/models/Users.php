@@ -6,6 +6,24 @@ use PDO;
 
 class Users extends Database
 {
+    // Mapa único de roles para toda la app
+    public const ROLE_LABELS = [
+        0 => 'Cashier',
+        1 => 'Administrator',
+        2 => 'Mantenimiento',
+        3 => 'Consulta',
+        4 => 'Pedido',
+        5 => 'Abastecimiento',
+    ];
+
+    public static function roles(): array {
+        return self::ROLE_LABELS;
+    }
+
+    private function isValidType(int $t): bool {
+        return array_key_exists($t, self::ROLE_LABELS);
+    }
+
     public function all(): array {
         $sql = "SELECT * FROM user_list WHERE user_id != 1 ORDER BY fullname ASC";
         return $this->getConnection()->query($sql)->fetchAll(PDO::FETCH_ASSOC);
@@ -19,7 +37,7 @@ class Users extends Database
     }
 
     public function usernameExists(string $username, ?int $ignoreId = null): bool {
-        $sql = "SELECT COUNT(*) FROM user_list WHERE username = ?";
+        $sql  = "SELECT COUNT(*) FROM user_list WHERE username = ?";
         $args = [$username];
         if ($ignoreId !== null) {
             $sql .= " AND user_id <> ?";
@@ -31,7 +49,9 @@ class Users extends Database
     }
 
     public function save(array $data): bool {
-        // Si es nuevo, password por defecto "123456" (hasheado). Luego puedes hacer una vista para cambiarlo.
+        $type = (int)($data['type'] ?? 0);
+        if (!$this->isValidType($type)) $type = 0; // fallback a Cashier si llega algo inválido
+
         if (empty($data['id'])) {
             $sql = "INSERT INTO user_list (fullname, username, password, type, status)
                     VALUES (:fullname, :username, :password, :type, 1)";
@@ -40,7 +60,7 @@ class Users extends Database
                 ':fullname' => $data['fullname'],
                 ':username' => $data['username'],
                 ':password' => password_hash('123456', PASSWORD_DEFAULT),
-                ':type'     => (int)$data['type'],
+                ':type'     => $type,
             ]);
         } else {
             $sql = "UPDATE user_list SET fullname = :fullname, username = :username, type = :type
@@ -49,7 +69,7 @@ class Users extends Database
             return $st->execute([
                 ':fullname' => $data['fullname'],
                 ':username' => $data['username'],
-                ':type'     => (int)$data['type'],
+                ':type'     => $type,
                 ':id'       => (int)$data['id'],
             ]);
         }
@@ -68,9 +88,7 @@ class Users extends Database
         return $row ?: null;
     }
 
-
     private function verifyLegacyOrBcrypt(string $plain, string $stored): bool {
-        // Soporta md5 legado y password_hash actual
         if (strlen($stored) === 32 && ctype_xdigit($stored)) {
             return md5($plain) === $stored;
         }
@@ -78,35 +96,25 @@ class Users extends Database
     }
 
     public function updateAccount(int $id, string $fullname, string $username, ?string $old = null, ?string $new = null): array {
-        // Validaciones
         if ($this->usernameExists($username, $id)) {
             return ['ok' => false, 'msg' => 'El username ya está en uso.'];
         }
-
-        // Traer usuario
         $user = $this->getById($id);
         if (!$user) return ['ok' => false, 'msg' => 'Usuario no encontrado.'];
 
-        // Si quiere cambiar password, validar old_password
-        $updatePass = false;
-        $newHash = null;
+        $updatePass = false; $newHash = null;
         if ($new !== null && $new !== '') {
-            if ($old === null || $old === '') {
-                return ['ok' => false, 'msg' => 'Debes ingresar tu contraseña actual.'];
-            }
-            if (!$this->verifyLegacyOrBcrypt($old, $user['password'])) {
-                return ['ok' => false, 'msg' => 'La contraseña actual es incorrecta.'];
-            }
+            if ($old === null || $old === '') return ['ok'=>false,'msg'=>'Debes ingresar tu contraseña actual.'];
+            if (!$this->verifyLegacyOrBcrypt($old, $user['password'])) return ['ok'=>false,'msg'=>'La contraseña actual es incorrecta.'];
             $newHash = password_hash($new, PASSWORD_DEFAULT);
             $updatePass = true;
         }
 
-        // Armar SQL
         if ($updatePass) {
-            $sql = "UPDATE user_list SET fullname = :fullname, username = :username, password = :password WHERE user_id = :id";
+            $sql = "UPDATE user_list SET fullname=:fullname, username=:username, password=:password WHERE user_id=:id";
             $params = [':fullname'=>$fullname, ':username'=>$username, ':password'=>$newHash, ':id'=>$id];
         } else {
-            $sql = "UPDATE user_list SET fullname = :fullname, username = :username WHERE user_id = :id";
+            $sql = "UPDATE user_list SET fullname=:fullname, username=:username WHERE user_id=:id";
             $params = [':fullname'=>$fullname, ':username'=>$username, ':id'=>$id];
         }
 
