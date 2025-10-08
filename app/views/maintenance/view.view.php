@@ -1,6 +1,4 @@
-<style>
-  #uni_modal .modal-footer { display:none !important; }
-</style>
+<style>#uni_modal .modal-footer{display:none!important}</style>
 <div class="container-fluid">
   <div class="col-12">
     <div class="w-100 mb-1">
@@ -8,8 +6,12 @@
       <div class="fs-5 ps-4"><?= isset($type['name']) ? htmlspecialchars($type['name']) : '' ?></div>
     </div>
     <div class="w-100 mb-1">
-      <div class="fs-6 text-info"><b>Precio:</b></div>
-      <div class="fs-6 ps-4"><?= isset($type['price']) ? number_format($type['price'], 2) : '' ?></div>
+      <div class="fs-6 text-info"><b>Precio compra (Q/gal):</b></div>
+      <div class="fs-6 ps-4"><?= isset($type['purchase_price_gal']) ? number_format((float)$type['purchase_price_gal'], 4) : '' ?></div>
+    </div>
+    <div class="w-100 mb-1">
+      <div class="fs-6 text-info"><b>Precio venta (Q/gal):</b></div>
+      <div class="fs-6 ps-4"><?= isset($type['sale_price_gal']) ? number_format((float)$type['sale_price_gal'], 4) : '' ?></div>
     </div>
     <div class="w-100 mb-1">
       <div class="fs-6 text-info"><b>Estado:</b></div>
@@ -22,7 +24,7 @@
       </div>
     </div>
     <div class="w-100 d-flex justify-content-end">
-      <button class="btn btn-sm btn-dark rounded-0" type="button" data-bs-dismiss="modal">Close</button>
+      <button class="btn btn-sm btn-dark rounded-0" type="button" data-bs-dismiss="modal">Cerrar</button>
     </div>
   </div>
 </div>

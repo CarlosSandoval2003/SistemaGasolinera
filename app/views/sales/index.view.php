@@ -2,7 +2,7 @@
   <div class="row">
     <div class="col-8"><h3>Transacción</h3></div>
     <div class="col-4 d-flex justify-content-end">
-      <button class="btn btn-sm btn-primary rounded-0" id="transaction-save-btn" type="button">Guardar Transacción</button>
+      <button class="btn btn-sm btn-primary rounded-0" id="transaction-save-btn" type="button">Guardar Venta</button>
     </div>
     <div class="clear-fix mb-1"></div><hr>
   </div>
@@ -41,7 +41,7 @@
                           <?= htmlspecialchars($row['name']) ?>
                         </div>
                         <div class="text-end fw-bold petrol-item-price col-auto">
-                          <?= number_format($row['price'],2) ?>
+                          Q<?= number_format($row['price'],4) ?>/gal
                         </div>
                       </div>
                     </a>
@@ -55,157 +55,319 @@
         <div class="col-4 h-100 py-2">
           <div class="h-100 d-flex">
             <div class="w-100">
-              <div class="form-group">
-                <label for="customer_id" class="control-label fw-bold text-light">Cliente</label>
-                <select name="customer_id" id="customer_id" class="form-select form-select-sm rounded-0" required>
-                  <option value="" disabled selected></option>
-                  <?php foreach($customers as $c): ?>
-                    <option value="<?= $c['customer_id'] ?>"><?= $c['customer_code'].' - '.$c['fullname'] ?></option>
-                  <?php endforeach; ?>
-                </select>
+
+              <!-- CF / NIT -->
+              <div class="form-group mb-2">
+                <label class="control-label fw-bold text-light d-block">Cliente</label>
+                <div class="btn-group" role="group" aria-label="CF o NIT">
+                  <input type="radio" class="btn-check" name="cf_or_nit" id="optCF" value="CF" autocomplete="off" checked>
+                  <label class="btn btn-sm btn-outline-light" for="optCF">CF</label>
+
+                  <input type="radio" class="btn-check" name="cf_or_nit" id="optNIT" value="NIT" autocomplete="off">
+                  <label class="btn btn-sm btn-outline-light" for="optNIT">NIT</label>
+                </div>
+                <div id="nitRow" class="mt-2" style="display:none">
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text">NIT</span>
+                    <input type="text" class="form-control" id="nit" name="nit" placeholder="Ingrese NIT">
+                    <button class="btn btn-secondary" type="button" id="btnFindNit">Buscar NIT</button>
+                  </div>
+                  <div class="form-text text-light" id="nitResult" style="min-height:18px;"></div>
+                </div>
               </div>
+
+              <!-- Cantidades -->
               <div class="form-group">
-                <label for="liter" class="control-label fw-bold text-light">Litros</label>
-                <input type="number" value="0" step="any" name="liter" id="liter" class="form-control form-control-sm rounded-0 text-end" required>
+                <label for="gallons" class="control-label fw-bold text-light">Galones (gal)</label>
+                <input type="number" placeholder="0.000" step="any" min="0.0001" name="gallons" id="gallons" class="form-control form-control-sm rounded-0 text-end" required>
               </div>
+
               <div class="form-group">
-                <label for="amount" class="control-label fw-bold text-light">Cantidad</label>
-                <input type="number" value="0" step="any" name="amount" id="amount" class="form-control form-control-sm rounded-0 text-end" required>
+                <label for="amount" class="control-label fw-bold text-light">Importe (Q)</label>
+                <input type="number" placeholder="0.00" step="any" name="amount" id="amount" class="form-control form-control-sm rounded-0 text-end" required>
               </div>
+
               <div class="form-group">
-                <label for="discount" class="control-label fw-bold text-light">Descuento %</label>
-                <input type="number" min="0" max="100" step="any" name="discount" id="discount" class="form-control form-control-sm rounded-0 text-end" value="0" required>
-              </div>
-              <div class="form-group">
-                <label for="total" class="control-label fw-bold text-light">Total</label>
+                <label for="total" class="control-label fw-bold text-light">Total (Q)</label>
                 <input type="number" value="0" step="any" name="total" id="total" class="form-control form-control-sm rounded-0 text-end" readonly>
               </div>
+
               <div class="form-group">
                 <label for="type" class="control-label fw-bold text-light">Tipo de Pago</label>
                 <select name="type" id="type" class="form-select form-select-sm rounded-0" required>
                   <option value="1" selected>Efectivo</option>
-                  <option value="2">Credito</option>
+                  <option value="3">Tarjeta</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label for="tendered_amount" class="control-label fw-bold text-light">Pago Recibido</label>
-                <input type="number" step="any" name="tendered_amount" id="tendered_amount" class="form-control form-control-sm rounded-0 text-end" value="0">
+
+              <!-- Solo efectivo -->
+              <div class="form-group" id="cashRow">
+                <label for="tendered_amount" class="control-label fw-bold text-light">Pago Recibido (Q)</label>
+                <input type="number" step="any" name="tendered_amount" id="tendered_amount"
+                       class="form-control form-control-sm rounded-0 text-end" placeholder="0.00">
               </div>
-              <div class="form-group">
-                <label for="change" class="control-label fw-bold text-light">Cambio</label>
-                <input type="number" step="any" name="change" id="change" class="form-control form-control-sm rounded-0 text-end" value="0" readonly>
+              <div class="form-group" id="changeRow">
+                <label for="change" class="control-label fw-bold text-light">Cambio (Q)</label>
+                <input type="number" step="any" name="change" id="change"
+                       class="form-control form-control-sm rounded-0 text-end" placeholder="0.00" readonly>
               </div>
+
+              <!-- Solo tarjeta -->
+              <div class="mt-2" id="btnPayCard" style="display:none">
+                <button type="button" class="btn btn-sm btn-outline-info w-100">
+                  Simular pago con tarjeta
+                </button>
+              </div>
+
+              <!-- Hidden para pasar “autorización” simulada al backend -->
+              <input type="hidden" name="card_auth" id="card_auth" value="">
+
             </div>
           </div>
         </div>
       </div>
 
       <input type="hidden" name="petrol_type_id" value="">
-      <input type="hidden" name="price" value="">
+      <input type="hidden" name="price" value="">  <!-- solo para mostrar; backend usa BD -->
+
+      <!-- === FIX CLAVE: fuente de verdad === -->
+      <input type="hidden" name="src" id="src" value="gallons">
     </form>
   </div>
 </div>
 
 <script>
-function calc_total(){
-  var amount =  parseFloat($('#amount').val()||0)
-  var discount =  parseFloat($('#discount').val()||0)
-  var total = discount > 0 ? amount - (amount * (discount / 100)) : amount
-  $('#total').val(total)
-}
-$(function(){
-  $('input,select').each(function(){
-    if($(this).attr('id') != "search") $(this).attr('disabled',true)
-  })
-  $('#search').on('input',function(){
-    var _search = $(this).val().toLowerCase()
+(function(){
+  // ---------- Helpers de redondeo ----------
+  const round2 = v => isFinite(v) ? Math.round((+v + Number.EPSILON) * 100) / 100 : 0;
+  const round3 = v => isFinite(v) ? Math.round((+v + Number.EPSILON) * 1000) / 1000 : 0;
+
+  let lastEdited = null; // 'gallons' | 'amount' | null
+
+  // Bloquear hasta elegir gasolina
+  $('input,select,button').not('#search').prop('disabled', true);
+  $('#transaction-save-btn').prop('disabled', true);
+  $('#btnFindNit').prop('disabled', true);
+
+  // Filtro catálogo
+  $('#search').on('input', function(){
+    const q = $(this).val().toLowerCase();
     $('.petrol-item').each(function(){
-      var _text = $(this).text().toLowerCase()
-      $(this).parent().toggle(_text.includes(_search))
-    })
-  })
+      $(this).parent().toggle($(this).text().toLowerCase().includes(q));
+    });
+  });
+
+  // Elegir gasolina
   $('.petrol-item').click(function(){
-    $('.petrol-item .bcheck').hide()
-    $(this).find('.bcheck').show()
-    $('[name="petrol_type_id"]').val($(this).data('id'))
-    $('[name="price"]').val($(this).data('price'))
-    $('input,select').removeAttr('disabled')
-    if($('#type').val() == 2){
-      $('#tendered_amount,#change').parent().hide()
-      $('#tendered_amount,#change').val('0')
+    $('.petrol-item .bcheck').hide();
+    $(this).find('.bcheck').show();
+
+    $('[name="petrol_type_id"]').val($(this).data('id'));
+    $('[name="price"]').val($(this).data('price')); // Q/gal (visual)
+
+    // Habilita formulario (pero deja campos de monto en blanco)
+    $('input,select,button').prop('disabled', false);
+    $('#transaction-save-btn').prop('disabled', false);
+
+    // Default CF
+    $('#optCF').prop('checked', true);
+    $('#nitRow').hide();
+    $('#btnFindNit').prop('disabled', true);
+
+    // Mostrar/ocultar filas efectivo según tipo
+    applyPaymentVisibility();
+
+    // Reinicia fuente hasta que el usuario escriba algo
+    lastEdited = null;
+    $('#src').val('gallons');
+    $('#gallons,#amount,#total,#tendered_amount,#change').val('');
+  });
+
+  // CF / NIT
+  $('input[name="cf_or_nit"]').change(function(){
+    if($(this).val()==='NIT'){
+      $('#nitRow').show();
+      $('#btnFindNit').prop('disabled', false);
+      $('#nit').focus();
+    } else {
+      $('#nitRow').hide();
+      $('#btnFindNit').prop('disabled', true);
+      $('#nitResult').text('');
+      $('#nit').val('');
     }
-  })
-  $('#type').change(function(){
-    if($(this).val() == 2){
-      $('#tendered_amount,#change').parent().hide().find('input').val('0')
+  });
+
+  // Buscar NIT (AJAX)
+  $('#btnFindNit').click(function(){
+    const nit = $('#nit').val().trim();
+    if(!nit){ $('#nitResult').text('Ingrese NIT.'); return; }
+    $('#nitResult').text('Buscando...');
+    $.get('index.php?url=sales/nitLookup', { nit }, function(resp){
+      if(resp.status==='ok'){
+        $('#nitResult').text(`Encontrado: ${resp.data.fullname}`);
+      }else if(resp.status==='not_found'){
+        $('#nitResult').text('NIT no registrado en SAT simulado.');
+      }else{
+        $('#nitResult').text(resp.msg || 'Error al buscar NIT.');
+      }
+    }, 'json').fail(()=> $('#nitResult').text('Error de red.'));
+  });
+
+  // Mostrar/ocultar filas según tipo de pago
+  function applyPaymentVisibility(){
+    const t = $('#type').val(); // '1'=Efectivo, '3'=Tarjeta
+    if(t === '1'){
+      $('#cashRow,#changeRow').show();
+      $('#btnPayCard').hide();
+    } else if (t === '3'){
+      $('#cashRow,#changeRow').hide();
+      $('#tendered_amount,#change').val(''); // limpia
+      $('#btnPayCard').show(); // botón simular
+    }
+  }
+
+  // Tipo de pago
+  $('#type').on('change', function(){
+    applyPaymentVisibility();
+    // No tocamos amount si amount fue la fuente
+    if($('#type').val()==='1'){
+      recalcChange();
+    }
+  });
+
+  // Detecta campo fuente (=== FIX: setear #src ===)
+  $('#gallons').on('input', function(){
+    lastEdited = 'gallons';
+    $('#src').val('gallons');     // <<<<<< CLAVE
+    recalcFromGallons();
+  });
+
+  $('#amount').on('input', function(){
+    lastEdited = 'amount';
+    $('#src').val('amount');      // <<<<<< CLAVE
+    recalcFromAmount();
+  });
+
+  $('#tendered_amount').on('input', function(){
+    recalcChange();
+  });
+
+  function getPrice(){
+    return parseFloat($('[name="price"]').val() || 0);
+  }
+  function getGallons(){
+    return parseFloat($('#gallons').val() || 0);
+  }
+  function getAmount(){
+    return parseFloat($('#amount').val() || 0);
+  }
+
+  function recalcFromGallons(){
+    const price = getPrice();
+    const gal   = getGallons();
+    if(gal > 0 && price > 0){
+      const amount = round2(gal * price);
+      // Escribimos amount y total; NO tocamos gallons (es la fuente)
+      $('#amount').val(amount ? amount.toFixed(2) : '');
+      $('#total').val($('#amount').val());
     }else{
-      $('#tendered_amount,#change').parent().show()
-      $('#tendered_amount,#change').val('0')
+      $('#amount,#total').val('');
     }
-  })
-  $('#liter').on('input',function(){
-    if(!$(this).is(":focus")) return;
-    var liter = parseFloat($(this).val()||0);
-    var price = parseFloat($('[name="price"]').val()||0);
-    $('#amount').val(price * liter)
-    calc_total()
-  })
-  $('#amount').on('input',function(){
-    if(!$(this).is(":focus")) return;
-    var amount = parseFloat($(this).val()||0);
-    var price = parseFloat($('[name="price"]').val()||0);
-    $('#liter').val(price > 0 ? (amount / price) : 0)
-    calc_total()
-  })
-  $('#discount').on('input',calc_total)
-  $('#tendered_amount').on('input',function(){
-    var total = parseFloat($('#total').val()||0)
-    var tendered = parseFloat($(this).val()||0)
-    $('#change').val(tendered-total)
-  })
+    if($('#type').val()==='1') recalcChange();
+  }
+
+  function recalcFromAmount(){
+    const price  = getPrice();
+    const amount = getAmount();
+    if(amount > 0 && price > 0){
+      const gal = round3(amount / price);
+      // Escribimos gallons; NO recalculamos ni tocamos amount (es la fuente)
+      $('#gallons').val(gal ? gal.toFixed(3) : '');
+      $('#total').val($('#amount').val());
+    }else{
+      $('#gallons,#total').val('');
+    }
+    if($('#type').val()==='1') recalcChange();
+  }
+
+  function recalcChange(){
+    const t = $('#type').val();
+    if(t !== '1') return; // solo efectivo
+    const total    = parseFloat($('#total').val() || 0);
+    const tendered = parseFloat($('#tendered_amount').val() || 0);
+    const change   = round2(tendered - total);
+    $('#change').val(Number.isFinite(change) ? change.toFixed(2) : '');
+  }
+
+  // --------- Pago con Tarjeta (simulado) ----------
+  $(document).on('click', '#btnPayCard', function(){
+    const gal = parseFloat($('#gallons').val()||0);
+    const total = parseFloat($('#total').val()||0);
+    if(gal <= 0 || total <= 0){
+      alert('Ingrese galones o importe antes de pagar.');
+      return;
+    }
+    uni_modal('Pago con Tarjeta','index.php?url=sales/cardModal','');
+  });
+
+  // Guardar transacción
   $('#transaction-save-btn').click(function(){
     if(($('[name="petrol_type_id"]').val()||0) <= 0){
-      alert("Please Fill the form First.")
+      alert("Seleccione gasolina.");
       return false;
     }
-    $('#transaction-form').submit()
-  })
+    $('#transaction-form').submit();
+  });
+
   $('#transaction-form').submit(function(e){
-    e.preventDefault()
-    if(parseFloat($('#change').val()||0) < 0 && $('#type').val() == '1'){
-      alert("Tendered Amount is invalid."); $('#tendered_amount').focus(); return false;
+    e.preventDefault();
+
+    // Reafirma la fuente antes de enviar (por si acaso)
+    if (lastEdited === 'amount') $('#src').val('amount');
+    else if (lastEdited === 'gallons') $('#src').val('gallons');
+    else $('#src').val('gallons'); // default
+
+    // Validaciones rápidas
+    const gal   = parseFloat($('#gallons').val()||0);
+    const total = parseFloat($('#total').val()||0);
+    if(gal <= 0){ alert("Galones debe ser > 0."); return; }
+    if(total <= 0){ alert("Total debe ser > 0."); return; }
+
+    const payType = $('#type').val();
+    if(payType === '1'){ // efectivo
+      const change = parseFloat($('#change').val()||0);
+      if(change < 0){ alert("Pago recibido menor al total."); $('#tendered_amount').focus(); return; }
     }
-    $('#transaction-save-btn').attr('disabled',true)
-    $('.pop_msg').remove()
-    var _this = $(this)
-    var _el = $('<div>').addClass('pop_msg')
+    if($('input[name="cf_or_nit"]:checked').val()==='NIT' && !$('#nit').val().trim()){
+      alert("Ingrese NIT o cambie a CF."); return;
+    }
+
+    $('#transaction-save-btn').attr('disabled',true);
+    $('.pop_msg').remove();
+    const _this = $(this);
+    const _el = $('<div>').addClass('pop_msg');
+
     $.ajax({
       url:'index.php?url=sales/save',
       data: new FormData(_this[0]),
-      cache: false,
-      contentType: false,
-      processData: false,
-      method: 'POST',
-      dataType: 'json',
-      error:err=>{
-        console.log(err)
-        _el.addClass('alert alert-danger').text("An error occurred.")
-        _this.prepend(_el).hide().show('slow')
-        $('#transaction-save-btn').attr('disabled',false)
+      cache:false, contentType:false, processData:false,
+      method:'POST', dataType:'json',
+      error: err=>{
+        console.error(err);
+        _el.addClass('alert alert-danger').text("Ocurrió un error.");
+        _this.prepend(_el).hide().show('slow');
+        $('#transaction-save-btn').attr('disabled',false);
       },
-      success:function(resp){
-        if(resp.status == 'success'){
-          setTimeout(() => {
-            uni_modal("RECEIPT","index.php?url=sales/receipt/"+resp.transaction_id)
-          }, 600);
+      success: resp=>{
+        if(resp.status=='success'){
+          setTimeout(()=>{ uni_modal("RECIBO","index.php?url=sales/receipt/"+resp.transaction_id) }, 400);
         }else{
-          _el.addClass('alert alert-danger')
+          _el.addClass('alert alert-danger').text(resp.msg || 'Error');
         }
-        _el.text(resp.msg || 'Error')
-        _this.prepend(_el).hide().show('slow')
-        $('#transaction-save-btn').attr('disabled',false)
+        _this.prepend(_el).hide().show('slow');
+        $('#transaction-save-btn').attr('disabled',false);
       }
-    })
-  })
-})
+    });
+  });
+})();
 </script>

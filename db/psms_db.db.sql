@@ -66,47 +66,37 @@ CREATE TABLE payment_list (
     FOREIGN KEY (customer_id) REFERENCES customer_list(customer_id) ON DELETE CASCADE
 );
 
+-- 1) Permitir que la OC NO pida contenedor (container_id NULL en purchase_items)
+ALTER TABLE purchase_items
+  MODIFY COLUMN container_id INT NULL;
 
-INSERT INTO customer_list (customer_id, customer_code, fullname, contact, email, address, status) VALUES
-(1, '202111-0001', 'Guest', '09113548798', 'guest@sample.com', 'N/A', 1),
-(2, '202111-0002', 'John Smith', '09123456789', 'jsmith@sample.com', 'Sample Address', 1),
-(3, '202111-0003', 'Sample Company 101', '09885546999', 'info@company101.com', 'Test Address', 1);
+-- Recibo
+CREATE TABLE IF NOT EXISTS purchase_receipt (
+  receipt_id INT AUTO_INCREMENT PRIMARY KEY,
+  purchase_id INT NOT NULL,
+  fecha DATE NOT NULL,
+  doc_proveedor VARCHAR(60) NULL,
+  notas TEXT NULL,
+  user_id INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_pr_po FOREIGN KEY (purchase_id) REFERENCES purchase_list(purchase_id)
+);
 
-INSERT INTO debt_list (debt_id, transaction_id, customer_id, amount, date_added) VALUES
-(1, 3, 1, 3678.0, '2021-11-13 05:53:21'),
-(2, 4, 3, 5000.0, '2021-11-13 07:53:10'),
-(3, 6, 2, 846.0, '2021-11-16 02:08:11'),
-(4, 7, 2, 592.2, '2021-11-16 02:11:06');
+-- Ítems del recibo (line_total normalito)
+CREATE TABLE IF NOT EXISTS purchase_receipt_items (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  receipt_id INT NOT NULL,
+  purchase_item_id INT NOT NULL,
+  container_id INT NOT NULL,
+  petrol_type_id INT NOT NULL,
+  qty_liters DECIMAL(12,3) NOT NULL,
+  unit_cost DECIMAL(12,4) NOT NULL,
+  line_total DECIMAL(12,2) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_pri_r  FOREIGN KEY (receipt_id)       REFERENCES purchase_receipt(receipt_id)  ON DELETE CASCADE,
+  CONSTRAINT fk_pri_pi FOREIGN KEY (purchase_item_id) REFERENCES purchase_items(item_id)      ON DELETE CASCADE
+);
 
-INSERT INTO payment_list (payment_id, payment_code, customer_id, amount, date_added) VALUES
-(1, '202111-0001', 1, 1500.0, '2021-11-13 06:58:08'),
-(2, '202111-0002', 1, 178.0, '2021-11-13 07:03:11'),
-(3, '202111-0003', 1, 50.0, '2021-11-13 07:04:45'),
-(4, '202111-0004', 1, 50.0, '2021-11-13 07:06:41'),
-(5, '202111-0005', 1, 150.0, '2021-11-13 07:07:03'),
-(6, '202111-0006', 1, 50.0, '2021-11-13 07:08:09'),
-(7, '202111-0007', 1, 50.0, '2021-11-13 07:08:46'),
-(8, '202111-0008', 1, 123.0, '2021-11-13 07:09:23'),
-(9, '202111-0009', 1, 27.0, '2021-11-13 07:18:49'),
-(10, '202111-0010', 1, 1500.0, '2021-11-13 07:43:48');
-
-INSERT INTO petrol_type_list (petrol_type_id, name, price, status) VALUES
-(1, 'Standard Unleaded 91', 62.0, 1),
-(2, 'Premium 95-octane unleaded', 70.0, 1),
-(3, 'Premium 98-octane unleaded', 75.0, 1),
-(4, 'E10', 77.0, 1),
-(5, 'E85', 100.0, 1);
-
-INSERT INTO transaction_list (transaction_id, customer_id, receipt_no, petrol_type_id, price, liter, amount, discount, total, tendered_amount, `change`, type, date_added, user_id) VALUES
-(2, 1, '202111-0001', 5, 100.0, 3.5, 350.0, 2.0, 343.0, 500.0, 157.0, 1, '2021-11-13 05:24:07', 1),
-(3, 1, '202111-0002', 2, 70.0, 52.5428571428571, 3678.0, 0.0, 3678.0, 0.0, 0.0, 2, '2021-11-13 05:53:21', 1),
-(4, 3, '202111-0003', 5, 100.0, 50.0, 5000.0, 0.0, 5000.0, 0.0, 0.0, 2, '2021-11-13 07:53:10', 1),
-(5, 1, '202111-0004', 2, 70.0, 2.14285714285714, 150.0, 0.0, 150.0, 150.0, 0.0, 1, '2021-11-13 07:55:47', 2),
-(6, 2, '202111-0005', 5, 100.0, 9.0, 900.0, 6.0, 846.0, 0.0, 0.0, 2, '2021-11-16 02:08:11', 1),
-(7, 2, '202111-0006', 2, 70.0, 9.0, 630.0, 6.0, 592.2, 0.0, 0.0, 2, '2021-11-16 02:11:06', 1),
-(8, 2, '202111-0007', 4, 77.0, 15.0, 1155.0, 1.0, 1143.45, 5000.0, 3856.55, 1, '2021-11-16 02:13:19', 1),
-(9, 2, '202111-0008', 5, 100.0, 2.0, 200.0, 0.0, 200.0, 1000.0, 800.0, 1, '2021-11-16 02:14:18', 1),
-(10, 2, '202507-0001', 1, 62.0, 1.61290322580645, 100.0, 0.0, 100.0, 100.0, 0.0, 1, '2025-07-29 04:57:35', 3);
 
 INSERT INTO user_list (user_id, fullname, username, password, type, status, date_created) VALUES
 (1, 'Administrator', 'admin', '0192023a7bbd73250516f069df18b500', 1, 1, '2021-11-13 01:52:49'),

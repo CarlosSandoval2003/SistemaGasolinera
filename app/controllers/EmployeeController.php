@@ -7,87 +7,113 @@ use App\Models\Position;
 
 class EmployeeController extends Controller {
     private Employee $model;
-    public function __construct(){ $this->model = new Employee(); }
+
+    public function __construct(){
+        $this->model = new Employee();
+    }
 
     public function index(){
         if (session_status()===PHP_SESSION_NONE) session_start();
-        if (($_SESSION['type'] ?? 0) != 1) { header("Location: index.php?url=home/index"); exit; }
+        // (Opcional) protege con rol si lo necesitas
         $pos = new Position();
         $this->render('employees/index', [
-            'employees'=>$this->model->all(),
-            'positions'=>$pos->all(),
-            'page'=>'employees','title'=>'Empleados'
+            'employees' => $this->model->all(),
+            'positions' => $pos->all(),
+            'page'      => 'employees',
+            'title'     => 'Empleados'
         ]);
     }
-    public function manage($id=null){
-        $pos = new Position();
-        $emp = $id ? $this->model->get((int)$id) : null;
-        $this->render('employees/manage', ['employee'=>$emp,'positions'=>$pos->all()], null, false);
+
+public function manage($id = null){
+    // Asegura obtener el ID ya sea por ruta o por querystring (?id=)
+    if ($id === null) {
+        $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
+    } else {
+        $id = (int)$id;
     }
+
+    $pos = new Position();
+    $emp = $id ? $this->model->get($id) : null;
+
+    // Si pidieron editar y no existe, puedes mostrar algo de feedback simple
+    if ($id && !$emp) {
+        // Renderiza igual el form vacío, o responde error. Aquí seguimos con form.
+    }
+
+    $this->render('employees/manage', [
+        'employee'  => $emp,
+        'positions' => $pos->all()
+    ], null, false);
+}
+
+
     public function save(){
         header('Content-Type: application/json');
+
+        // Sanitiza y arma payload
         $first = trim($_POST['first_name'] ?? '');
         $last  = trim($_POST['last_name'] ?? '');
-        $d = [
+        $dpi   = trim($_POST['dpi'] ?? '');
+        $email = trim($_POST['email'] ?? '');
+        $phone = trim($_POST['phone'] ?? '');
+        $addr  = trim($_POST['address'] ?? '');
+        $hire  = $_POST['hire_date'] ?? null;
+        $sal   = (string)($_POST['salary'] ?? '0');
+        $status= (int)($_POST['status'] ?? 1);
+        $posId = (int)($_POST['position_id'] ?? 0);
+
+        // Validaciones servidor
+        if ($first==='' || $last==='' || $dpi==='' || $email==='' || !$posId){
+            echo json_encode(['status'=>'error','msg'=>'Completa: nombres, apellidos, DPI, email y puesto.']); return;
+        }
+        if (!preg_match('/^\d{13}$/', $dpi)){
+            echo json_encode(['status'=>'error','msg'=>'DPI inválido: deben ser 13 dígitos.']); return;
+        }
+        if ($phone!=='' && !preg_match('/^\d{8}$/', $phone)){
+            echo json_encode(['status'=>'error','msg'=>'Teléfono inválido: deben ser 8 dígitos.']); return;
+        }
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)){
+            echo json_encode(['status'=>'error','msg'=>'Email inválido.']); return;
+        }
+        if (!preg_match('/^\d{1,9}(\.\d{1,2})?$/', $sal)){
+            echo json_encode(['status'=>'error','msg'=>'Salario inválido.']); return;
+        }
+
+        $data = [
             'employee_id' => $_POST['id'] ?? null,
             'first_name'  => $first,
             'last_name'   => $last,
-            'fullname'    => trim(($first.' '.$last)),
-            'dpi'         => trim($_POST['dpi'] ?? ''),
-            'email'       => trim($_POST['email'] ?? ''),
-            'phone'       => trim($_POST['phone'] ?? ''),
-            'address'     => trim($_POST['address'] ?? ''),
-            'hire_date'   => $_POST['hire_date'] ?? null,
-            'salary'      => (float)($_POST['salary'] ?? 0),
-            'status'      => (int)($_POST['status'] ?? 1),
-            'position_id' => (int)($_POST['position_id'] ?? 0),
+            'fullname'    => trim($first.' '.$last),
+            'dpi'         => $dpi,
+            'email'       => $email,
+            'phone'       => $phone,
+            'address'     => $addr,
+            'hire_date'   => $hire ?: null,
+            'salary'      => (float)$sal,
+            'status'      => $status,
+            'position_id' => $posId,
         ];
-        if ($d['first_name']==='' || $d['last_name']==='' || $d['dpi']==='' || $d['email']==='' || !$d['position_id']){
-            echo json_encode(['status'=>'error','msg'=>'Completa: nombre, apellido, DPI, email y puesto.']); return;
-        }
-        $res = $this->model->save($d);
-        echo json_encode($res['ok']?['status'=>'success','msg'=>'Empleado guardado']:['status'=>'error','msg'=>'No se pudo guardar']);
+
+        $res = $this->model->save($data);
+        echo json_encode($res['ok']
+            ? ['status'=>'success','msg'=>'Empleado guardado']
+            : ['status'=>'error','msg'=>$res['msg'] ?? 'No se pudo guardar']
+        );
     }
+
     public function delete(){
         header('Content-Type: application/json');
         $id = (int)($_POST['id'] ?? 0);
+        if(!$id){ echo json_encode(['status'=>'error','msg'=>'ID inválido']); return; }
         $res = $this->model->delete($id);
-        echo json_encode($res['ok']?['status'=>'success']:['status'=>'error','msg'=>'No se pudo eliminar']);
+        echo json_encode($res['ok'] ? ['status'=>'success'] : ['status'=>'error','msg'=>$res['msg'] ?? 'No se pudo eliminar']);
     }
 
-    // Modales de usuario
-    public function assignUser($employee_id){
-        $emp = $this->model->get((int)$employee_id);
-        if(!$emp){ echo "Empleado no encontrado"; return; }
-        // sugerir username y tipo según puesto
-        $suggest = $this->model->suggestUsername($emp['first_name'],$emp['last_name']);
-        $this->render('employees/assign_user', ['emp'=>$emp,'suggest'=>$suggest], null, false);
-    }
-    public function createUser(){
+    /** Búsqueda rápida JSON: q en código, nombre, dpi, email, teléfono */
+    public function search(){
         header('Content-Type: application/json');
-        $eid = (int)($_POST['employee_id'] ?? 0);
-        $u   = trim($_POST['username'] ?? '');
-        $p   = $_POST['password'] ?? '';
-        $t   = (int)($_POST['type'] ?? 0); // 0 Cashier, 1 Admin
-        if(!$eid || $u==='' || $p===''){ echo json_encode(['status'=>'error','msg'=>'Datos incompletos']); return; }
-        $res = $this->model->createUser($eid,$u,$p,$t);
-        echo json_encode($res['ok']?['status'=>'success','msg'=>'Usuario creado']:['status'=>'error','msg'=>$res['msg'] ?? 'Error']);
-    }
-    public function linkUser($employee_id){
-        // modal de vincular existente
-        $emp = $this->model->get((int)$employee_id);
-        // usuarios libres:
-        $pdo = (new \App\Core\Database())->getConnection();
-        $st = $pdo->query("SELECT u.user_id, u.username FROM user_list u LEFT JOIN employee e ON e.user_id=u.user_id WHERE e.user_id IS NULL ORDER BY u.username");
-        $users = $st->fetchAll(\PDO::FETCH_ASSOC);
-        $this->render('employees/link_user', ['emp'=>$emp,'users'=>$users], null, false);
-    }
-    public function doLinkUser(){
-        header('Content-Type: application/json');
-        $eid = (int)($_POST['employee_id'] ?? 0);
-        $uid = (int)($_POST['user_id'] ?? 0);
-        if(!$eid || !$uid){ echo json_encode(['status'=>'error','msg'=>'Datos inválidos']); return; }
-        $res = $this->model->linkUser($eid,$uid);
-        echo json_encode($res['ok']?['status'=>'success','msg'=>'Vinculado']:['status'=>'error','msg'=>$res['msg'] ?? 'Error']);
+        $q = trim($_GET['q'] ?? '');
+        $rows = $this->model->search($q, 20);
+        echo json_encode(['status'=>'success','data'=>$rows]);
     }
 }

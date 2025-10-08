@@ -9,9 +9,6 @@
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav">
         <!-- Inicio (todos) -->
-        <li class="nav-item">
-          <a class="nav-link <?= ($page=='home')?'active':'' ?>" href="index.php?url=home/index">Inicio</a>
-        </li>
 
         <!-- Kardex: Admin(1) y Consulta(3) -->
         <?php if (isset($_SESSION['type']) && ($_SESSION['type']==1 || $_SESSION['type']==3)): ?>
@@ -24,9 +21,6 @@
         <?php if (isset($_SESSION['type']) && $_SESSION['type']==1): ?>
         <li class="nav-item">
           <a class="nav-link <?= ($page=='customer')?'active':'' ?>" href="index.php?url=customer/index">Clientes</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link <?= ($page=='balances')?'active':'' ?>" href="index.php?url=balance/index">Balances</a>
         </li>
         <?php endif; ?>
 

@@ -17,7 +17,7 @@ class PetrolTypeController extends Controller
         $this->render('maintenance/index', [
             'types' => $types,
             'page'  => 'maintenance',
-            'title' => 'Maintenance | Petrol Types'
+            'title' => 'Mantenimiento | Gasolina'
         ]);
     }
 
@@ -36,24 +36,34 @@ class PetrolTypeController extends Controller
     public function save() {
         header('Content-Type: application/json');
 
-        $id     = isset($_POST['id']) ? (int)$_POST['id'] : null;
-        $name   = trim($_POST['name'] ?? '');
-        $price  = (float)($_POST['price'] ?? 0);
-        $status = isset($_POST['status']) ? (int)$_POST['status'] : 0;
+        $id   = isset($_POST['id']) ? (int)$_POST['id'] : null;
+        $name = trim($_POST['name'] ?? '');
 
-        if ($name === '' || $price <= 0) {
-            echo json_encode(['status'=>'error','msg'=>'Name y Price son obligatorios']); return;
+        // Nuevos campos por GALÓN
+        $purchase_price_gal = isset($_POST['purchase_price_gal']) ? (float)$_POST['purchase_price_gal'] : 0;
+        $sale_price_gal     = isset($_POST['sale_price_gal']) ? (float)$_POST['sale_price_gal'] : 0;
+        $status             = isset($_POST['status']) ? (int)$_POST['status'] : 0;
+
+        if ($name === '') {
+            echo json_encode(['status'=>'error','msg'=>'El nombre es obligatorio.']); return;
+        }
+        if ($purchase_price_gal <= 0) {
+            echo json_encode(['status'=>'error','msg'=>'El precio de compra por galón debe ser mayor a 0.']); return;
+        }
+        if ($sale_price_gal <= 0) {
+            echo json_encode(['status'=>'error','msg'=>'El precio de venta por galón debe ser mayor a 0.']); return;
         }
 
         $ok = $this->model->save([
-            'id'     => $id,
-            'name'   => $name,
-            'price'  => $price,
-            'status' => $status
+            'id'                 => $id,
+            'name'               => $name,
+            'purchase_price_gal' => $purchase_price_gal,
+            'sale_price_gal'     => $sale_price_gal,
+            'status'             => $status
         ]);
 
         echo json_encode($ok
-            ? ['status'=>'success','msg'=>'Petrol type guardado correctamente.']
+            ? ['status'=>'success','msg'=>'Gasolina guardada correctamente.']
             : ['status'=>'error','msg'=>'No se pudo guardar.']);
     }
 
@@ -65,7 +75,7 @@ class PetrolTypeController extends Controller
 
         $ok = $this->model->delete($id);
         echo json_encode($ok
-            ? ['status'=>'success','msg'=>'Petrol type eliminado.']
+            ? ['status'=>'success','msg'=>'Gasolina eliminada.']
             : ['status'=>'error','msg'=>'No se pudo eliminar.']);
     }
 }

@@ -6,60 +6,59 @@ use PDO;
 
 class Customer extends Database
 {
-    public function getAll()
+    public function getAll(): array
     {
-        $sql = "SELECT * FROM customer_list ORDER BY fullname ASC";
-        $stmt = $this->getConnection()->query($sql);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $sql = "SELECT customer_id, customer_code, fullname, status
+                FROM customer_list
+                ORDER BY fullname ASC";
+        return $this->getConnection()->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function getById($id)
+    public function getById(int $id): ?array
     {
-        $sql = "SELECT * FROM customer_list WHERE customer_id = ?";
-        $stmt = $this->getConnection()->prepare($sql);
-        $stmt->execute([$id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $sql = "SELECT customer_id, customer_code, fullname, status
+                FROM customer_list
+                WHERE customer_id = ?";
+        $st = $this->getConnection()->prepare($sql);
+        $st->execute([$id]);
+        $r = $st->fetch(PDO::FETCH_ASSOC);
+        return $r ?: null;
     }
 
-    public function save($data)
-{
-    $conn = $this->getConnection();
+    public function save(array $d): bool
+    {
+        $pdo = $this->getConnection();
 
-    if (!empty($data['id'])) {
-        // UPDATE
-        $sql = "UPDATE customer_list SET fullname = :fullname, email = :email, contact = :contact, address = :address, status = :status WHERE customer_id = :id";
-
-        $params = [
-            'id' => $data['id'],
-            'fullname' => $data['fullname'],
-            'email' => $data['email'],
-            'contact' => $data['contact'],
-            'address' => $data['address'],
-            'status' => $data['status']
-        ];
-    } else {
-        // INSERT
-        $sql = "INSERT INTO customer_list (fullname, email, contact, address, status, customer_code) VALUES (:fullname, :email, :contact, :address, :status, :customer_code)";
-
-        $params = [
-            'fullname' => $data['fullname'],
-            'email' => $data['email'],
-            'contact' => $data['contact'],
-            'address' => $data['address'],
-            'status' => $data['status'],
-            'customer_code' => $data['customer_code']
-        ];
+        if (!empty($d['id'])) {
+            // UPDATE
+            $sql = "UPDATE customer_list
+                       SET fullname = :fullname,
+                           customer_code = :customer_code,
+                           status = :status
+                     WHERE customer_id = :id";
+            $st = $pdo->prepare($sql);
+            return $st->execute([
+                ':fullname'      => $d['fullname'],
+                ':customer_code' => $d['customer_code'], // NIT
+                ':status'        => (int)$d['status'],
+                ':id'            => (int)$d['id'],
+            ]);
+        } else {
+            // INSERT (dejamos contact/email/address en blanco por compatibilidad de esquema)
+            $sql = "INSERT INTO customer_list (customer_code, fullname, contact, email, address, status)
+                    VALUES (:customer_code, :fullname, '', '', '', :status)";
+            $st = $pdo->prepare($sql);
+            return $st->execute([
+                ':customer_code' => $d['customer_code'], // NIT
+                ':fullname'      => $d['fullname'],
+                ':status'        => (int)$d['status'],
+            ]);
+        }
     }
 
-    $stmt = $conn->prepare($sql);
-    return $stmt->execute($params);
-}
-
-
-    public function delete($id)
+    public function delete(int $id): bool
     {
-        $sql = "DELETE FROM customer_list WHERE customer_id = ?";
-        $stmt = $this->getConnection()->prepare($sql);
-        return $stmt->execute([$id]);
+        $st = $this->getConnection()->prepare("DELETE FROM customer_list WHERE customer_id=?");
+        return $st->execute([$id]);
     }
 }

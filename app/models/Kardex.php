@@ -6,15 +6,6 @@ use PDO;
 
 class Kardex extends Database
 {
-    /**
-     * Devuelve movimientos del kardex con joins y delta (+/-) ya calculado.
-     * Filtros soportados:
-     *  - date_from, date_to (YYYY-mm-dd)
-     *  - container_id
-     *  - petrol_type_id
-     *  - kind (IN|OUT|TRANSFER_IN|TRANSFER_OUT|ADJUST)
-     *  - user_id
-     */
     public function list(array $f = []): array {
         $w = []; $p = [];
         if (!empty($f['date_from'])) { $w[] = "tx.created_at >= ?"; $p[] = $f['date_from'] . " 00:00:00"; }
@@ -39,7 +30,6 @@ class Kardex extends Database
                 tx.petrol_type_id,
                 pt.name AS petrol_name,
                 u.fullname AS user_fullname,
-                -- delta con signo
                 CASE 
                     WHEN tx.kind IN ('IN','TRANSFER_IN') THEN tx.qty_liters
                     WHEN tx.kind IN ('OUT','TRANSFER_OUT') THEN -tx.qty_liters
@@ -57,10 +47,6 @@ class Kardex extends Database
         return $st->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Saldo de apertura para un contenedor antes de date_from.
-     * Si no se pasa container_id o date_from => 0.00
-     */
     public function openingBalance(?int $container_id, ?string $date_from): float {
         if (!$container_id || !$date_from) return 0.0;
         $sql = "
@@ -78,6 +64,46 @@ class Kardex extends Database
         $st = $this->getConnection()->prepare($sql);
         $st->execute([$container_id, $date_from . " 00:00:00"]);
         return (float)$st->fetchColumn();
+    }
+
+    /** === Detalle === */
+    public function getTxById(int $tx_id): ?array {
+        $sql = "
+            SELECT
+                tx.*,
+                c.name AS container_name,
+                pt.name AS petrol_name,
+                u.fullname AS user_fullname
+            FROM container_tx tx
+            INNER JOIN `container` c ON c.container_id = tx.container_id
+            INNER JOIN petrol_type_list pt ON pt.petrol_type_id = tx.petrol_type_id
+            LEFT JOIN user_list u ON u.user_id = tx.user_id
+            WHERE tx.tx_id = ?
+        ";
+        $st = $this->getConnection()->prepare($sql);
+        $st->execute([$tx_id]);
+        $r = $st->fetch(PDO::FETCH_ASSOC);
+        return $r ?: null;
+    }
+
+    /** Empareja TRANSFER_IN/TRANSFER_OUT por ref_id para mostrar origen/destino */
+    public function transferPair(int $ref_id): array {
+        $sql = "
+            SELECT
+                tx.tx_id, tx.kind, tx.qty_liters, tx.created_at,
+                tx.container_id, c.name AS container_name,
+                tx.petrol_type_id, pt.name AS petrol_name,
+                u.fullname AS user_fullname
+            FROM container_tx tx
+            INNER JOIN `container` c ON c.container_id = tx.container_id
+            INNER JOIN petrol_type_list pt ON pt.petrol_type_id = tx.petrol_type_id
+            LEFT JOIN user_list u ON u.user_id = tx.user_id
+            WHERE tx.ref_id = ?
+            ORDER BY FIELD(tx.kind,'TRANSFER_OUT','TRANSFER_IN'), tx.tx_id
+        ";
+        $st = $this->getConnection()->prepare($sql);
+        $st->execute([$ref_id]);
+        return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     /** Listas para filtros */

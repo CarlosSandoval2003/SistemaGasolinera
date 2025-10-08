@@ -6,94 +6,87 @@ use App\Models\Customer;
 
 class CustomerController extends Controller
 {
-    private $model;
+    private Customer $model;
 
     public function __construct()
     {
         $this->model = new Customer();
     }
 
-
-public function index() {
-    $model = new Customer();
-    $customers = $model->getAll();
-
-    $this->render('customers/index', [
-        'customers' => $customers,
-        'page' => 'customer', 
-        'title' => 'Clientes | Petrol Station'
-    ]);
-}
-
-
-
-public function manage($id = null)
-{
-    if (!$id && isset($_GET['id'])) {
-        $id = $_GET['id'];
+    public function index()
+    {
+        $customers = $this->model->getAll();
+        $this->render('customers/index', [
+            'customers' => $customers,
+            'page'      => 'customer',
+            'title'     => 'Clientes'
+        ]);
     }
 
-    $customer = $id ? $this->model->getById($id) : null;
+    public function manage($id = null)
+    {
+        if (!$id && isset($_GET['id'])) $id = (int)$_GET['id'];
+        $customer = $id ? $this->model->getById((int)$id) : null;
 
-    $this->render('customers/manage', ['customer' => $customer], null, false);
-}
-
-
+        $this->render('customers/manage', [
+            'customer' => $customer
+        ], null, false);
+    }
 
     public function save()
     {
         header('Content-Type: application/json');
 
-        $id = $_POST['id'] ?? null;
+        $id        = isset($_POST['id']) ? (int)$_POST['id'] : null;
+        $firstName = trim($_POST['first_name'] ?? '');
+        $lastName  = trim($_POST['last_name'] ?? '');
+        $nit       = strtoupper(trim($_POST['nit'] ?? ''));
+        $status    = (int)($_POST['status'] ?? 1);
 
-
-        $customer_code = strtoupper(uniqid("CST-"));
-
-        $data = [
-            'id' => $id,
-            'fullname' => $_POST['fullname'] ?? '',
-            'email' => $_POST['email'] ?? '',
-            'contact' => $_POST['contact'] ?? '',
-            'address' => $_POST['address'] ?? '',
-            'status' => $_POST['status'] ?? 1,
-        ];
-
-        if (!$id) {
-            $data['customer_code'] = $customer_code;
-        }
-
-        $success = $this->model->save($data);
-
-        if ($success) {
-            echo json_encode(['status' => 'success', 'msg' => 'Cliente guardado correctamente.']);
-        } else {
-            echo json_encode(['status' => 'error', 'msg' => 'No se pudo guardar el cliente.']);
-        }
-    }
-
-   
-    public function viewCustomer($id)
-    {
-        $customer = $this->model->getById($id);
-        $this->render('customers/view', ['customer' => $customer], null, false);
-    }
-
-   
-    public function delete()
-    {
-        header('Content-Type: application/json');
-
-        if (!isset($_POST['id'])) {
-            echo json_encode(['status' => 'error', 'msg' => 'ID no proporcionado']);
+        if ($firstName === '' || $lastName === '' || $nit === '') {
+            echo json_encode(['status'=>'error','msg'=>'Completa Nombres, Apellidos y NIT.']);
             return;
         }
 
-        $deleted = $this->model->delete($_POST['id']);
-
-        if ($deleted) {
-            echo json_encode(['status' => 'success', 'msg' => 'Cliente eliminado exitosamente']);
-        } else {
-            echo json_encode(['status' => 'error', 'msg' => 'Error al eliminar el cliente']);
+        if (!preg_match('/^[A-Z0-9-]{3,30}$/', $nit)) {
+            echo json_encode(['status'=>'error','msg'=>'NIT inválido. Usa letras/números y guiones.']);
+            return;
         }
+
+        $payload = [
+            'id'            => $id,
+            'first_name'    => $firstName,
+            'last_name'     => $lastName,
+            'fullname'      => trim($firstName.' '.$lastName),
+            'customer_code' => $nit,   // NIT vive aquí (compatible con POS)
+            'status'        => $status,
+        ];
+
+        $ok = $this->model->save($payload);
+        echo json_encode($ok
+            ? ['status'=>'success','msg'=>'Cliente guardado correctamente.']
+            : ['status'=>'error','msg'=>'No se pudo guardar el cliente.']
+        );
+    }
+
+    public function viewCustomer($id)
+    {
+        $customer = $this->model->getById((int)$id);
+        $this->render('customers/view', ['customer' => $customer], null, false);
+    }
+
+    public function delete()
+    {
+        header('Content-Type: application/json');
+        $id = (int)($_POST['id'] ?? 0);
+        if (!$id) {
+            echo json_encode(['status'=>'error','msg'=>'ID no proporcionado']);
+            return;
+        }
+        $ok = $this->model->delete($id);
+        echo json_encode($ok
+            ? ['status'=>'success','msg'=>'Cliente eliminado']
+            : ['status'=>'error','msg'=>'Error al eliminar el cliente']
+        );
     }
 }

@@ -1,10 +1,10 @@
 <div class="card h-100 d-flex flex-column">
   <div class="card-header d-flex justify-content-between">
-    <h3 class="card-title">Mantenimiento Gasolina</h3>
+    <h3 class="card-title">Mantenimiento de Gasolina</h3>
     <div class="card-tools align-middle">
-      <button class="btn btn-dark btn-sm py-1 rounded-0" type="button" id="new_petrol_type">Add New Fuel</button>
-      <button class="btn btn-primary btn-sm py-1 rounded-0" type="button" id="new_container">Add Container</button>
-      <button class="btn btn-secondary btn-sm py-1 rounded-0" type="button" id="transfer_container">Transfer</button>
+      <button class="btn btn-dark btn-sm py-1 rounded-0" type="button" id="new_petrol_type">Nueva Gasolina</button>
+      <button class="btn btn-primary btn-sm py-1 rounded-0" type="button" id="new_container">Nuevo Contenedor</button>
+      <button class="btn btn-secondary btn-sm py-1 rounded-0" type="button" id="transfer_container">Transferir</button>
     </div>
   </div>
 
@@ -14,9 +14,9 @@
         <!-- LEFT: Petrol Types -->
         <div class="col-md-6 h-100 d-flex flex-column">
           <div class="w-100 d-flex border-bottom border-dark py-1 mb-1">
-            <div class="fs-5 col-auto flex-grow-1"><b>Lista Tipos de Gasolina</b></div>
+            <div class="fs-5 col-auto flex-grow-1"><b>Lista de tipos de gasolina</b></div>
             <div class="col-auto flex-grow-0 d-flex justify-content-end">
-              <a href="javascript:void(0)" id="new_petrol_type_btn" class="btn btn-dark btn-sm bg-gradient rounded-2" title="Add Petrol Type">
+              <a href="javascript:void(0)" id="new_petrol_type_btn" class="btn btn-dark btn-sm bg-gradient rounded-2" title="Agregar gasolina">
                 <span class="fa fa-plus"></span>
               </a>
             </div>
@@ -27,8 +27,11 @@
                 <?php foreach ($types as $row): ?>
                   <li class="list-group-item d-flex align-items-center">
                     <div class="col-8 flex-grow-1">
-                      <?= htmlspecialchars($row['name']) ?>
-                      <small><span class="text-muted">Precio Actual: </span><?= number_format($row['price'], 2) ?></small>
+                      <div><b><?= htmlspecialchars($row['name']) ?></b></div>
+                      <small class="text-muted d-block">
+                        Compra: Q<?= number_format((float)$row['purchase_price_gal'], 4) ?>/gal &nbsp; | &nbsp;
+                        Venta: Q<?= number_format((float)$row['sale_price_gal'], 4) ?>/gal
+                      </small>
                     </div>
                     <div class="col-2 pe-2 text-end">
                       <?php if ((int)$row['status'] === 1): ?>
@@ -56,52 +59,7 @@
             </ul>
           </div>
         </div>
-        
-
-        <?php /*
-        <!-- RIGHT: Containers -->
-        <div class="col-md-6 h-100 d-flex flex-column">
-          <div class="w-100 d-flex border-bottom border-dark py-1 mb-1">
-            <div class="fs-5 col-auto flex-grow-1"><b>Containers</b></div>
-            <div class="col-auto flex-grow-0 d-flex justify-content-end">
-              <a href="javascript:void(0)" id="new_container_btn" class="btn btn-primary btn-sm bg-gradient rounded-2" title="Add Container">
-                <span class="fa fa-plus"></span>
-              </a>
-            </div>
-          </div>
-          <div class="h-100 overflow-auto border rounded-1 border-dark">
-            <ul class="list-group">
-              <?php if (!empty($containers)): $i=1; ?>
-                <?php foreach ($containers as $c): 
-                  $pct = ($c['capacity_liters']>0) ? ($c['qty_liters']/$c['capacity_liters']*100) : 0; ?>
-                  <li class="list-group-item d-flex align-items-center">
-                    <div class="col-7 flex-grow-1">
-                      <div class="fw-bold"><?= htmlspecialchars($c['name']) ?></div>
-                      <small class="text-muted"><?= htmlspecialchars($c['petrol_name']) ?></small><br>
-                      <small>Stock: <b><?= number_format($c['qty_liters'],2) ?> L</b> / Cap: <?= number_format($c['capacity_liters'],2) ?> L (<?= number_format($pct,1) ?>%)</small>
-                    </div>
-                    <div class="col-3 text-end">
-                      <?php if (!empty($c['is_default'])): ?>
-                        <span class="badge bg-success">Default</span><br>
-                      <?php endif; ?>
-                      <small><?= $c['status'] ? 'Active' : 'Inactive' ?></small>
-                    </div>
-                    <div class="col-2 d-flex justify-content-end">
-                      <div class="btn-group btn-group-sm">
-                        <a href="javascript:void(0)" class="btn btn-info text-light view_container" title="Kardex" data-id="<?= $c['container_id'] ?>"><i class="fa fa-list"></i></a>
-                        <a href="javascript:void(0)" class="btn btn-primary edit_container" title="Edit" data-id="<?= $c['container_id'] ?>"><i class="fa fa-edit"></i></a>
-                        <a href="javascript:void(0)" class="btn btn-danger delete_container" title="Delete" data-id="<?= $c['container_id'] ?>"><i class="fa fa-trash"></i></a>
-                      </div>
-                    </div>
-                  </li>
-                <?php endforeach; ?>
-              <?php else: ?>
-                <li class="list-group-item text-center">No containers yet.</li>
-              <?php endif; ?>
-            </ul>
-          </div>
-        </div>*/ ?>
-        <!-- /RIGHT -->
+        <!-- /RIGHT (tus contenedores quedan como estaban) -->
       </div>
     </div>
   </div>
@@ -109,35 +67,35 @@
 
 <script>
 $(function(){
-  // ---- PETROL TYPES ----
+  // ---- GASOLINA ----
   $('#new_petrol_type, #new_petrol_type_btn').click(function(){
-    uni_modal('Add New Petrol Type',"index.php?url=petroltype/manage",'mid-large');
+    uni_modal('Nueva Gasolina',"index.php?url=petroltype/manage",'mid-large');
   });
   $('.edit_petrol_type').click(function(){
-    uni_modal('Edit Petrol Type Details',"index.php?url=petroltype/manage&id=" + $(this).data('id'),'mid-large');
+    uni_modal('Editar Gasolina',"index.php?url=petroltype/manage&id=" + $(this).data('id'),'mid-large');
   });
   $('.view_petrol_type').click(function(){
-    uni_modal('Petrol Type Details',"index.php?url=petroltype/viewPetrol&id=" + $(this).data('id'),'');
+    uni_modal('Detalle de Gasolina',"index.php?url=petroltype/viewPetrol&id=" + $(this).data('id'),'');
   });
   $('.delete_petrol_type').click(function(){
-    _conf("Are you sure to delete <b>"+$(this).data('name')+"</b> from Petrol Type List?", 'delete_petrol_type', [$(this).data('id')]);
+    _conf("¿Eliminar <b>"+$(this).data('name')+"</b>?", 'delete_petrol_type', [$(this).data('id')]);
   });
 
-  // ---- CONTAINERS ----
+  // ---- CONTENEDORES ----
   $('#new_container, #new_container_btn').click(function(){
-    uni_modal('Add Container','index.php?url=containers/manage','mid-large');
+    uni_modal('Nuevo Contenedor','index.php?url=containers/manage','mid-large');
   });
   $('#transfer_container').click(function(){
-    uni_modal('Transfer Between Containers','index.php?url=containers/transfer','mid-large');
+    uni_modal('Transferir entre contenedores','index.php?url=containers/transfer','mid-large');
   });
   $('.edit_container').click(function(){
-    uni_modal('Edit Container','index.php?url=containers/manage&id='+$(this).data('id'),'mid-large');
+    uni_modal('Editar Contenedor','index.php?url=containers/manage&id='+$(this).data('id'),'mid-large');
   });
   $('.view_container').click(function(){
-    uni_modal('Container Kardex','index.php?url=containers/movements/'+$(this).data('id'),'large');
+    uni_modal('Kardex de Contenedor','index.php?url=containers/movements/'+$(this).data('id'),'large');
   });
   $('.delete_container').click(function(){
-    _conf("Are you sure to delete this container?", 'delete_container', [$(this).data('id')]);
+    _conf("¿Eliminar este contenedor?", 'delete_container', [$(this).data('id')]);
   });
 });
 
@@ -150,14 +108,14 @@ function delete_petrol_type(id){
     dataType:'json',
     error:err=>{
       console.error(err);
-      alert("An error occurred.");
+      alert("Ocurrió un error.");
       $('#confirm_modal button').attr('disabled',false);
     },
     success:function(resp){
       if(resp.status == 'success'){
         location.reload();
       }else{
-        alert(resp.msg || "An error occurred.");
+        alert(resp.msg || "Ocurrió un error.");
         $('#confirm_modal button').attr('disabled',false);
       }
     }
@@ -173,14 +131,14 @@ function delete_container(id){
     dataType:'json',
     error:err=>{
       console.error(err);
-      alert("An error occurred.");
+      alert("Ocurrió un error.");
       $('#confirm_modal button').attr('disabled',false);
     },
     success:function(resp){
       if(resp.status === 'success'){
         location.reload();
       }else{
-        alert(resp.msg || "An error occurred.");
+        alert(resp.msg || "Ocurrió un error.");
         $('#confirm_modal button').attr('disabled',false);
       }
     }

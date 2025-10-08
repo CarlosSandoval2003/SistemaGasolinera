@@ -5,6 +5,7 @@ use App\Core\Database;
 use PDO;
 
 class Container extends Database {
+
     public function all() {
         $sql = "SELECT c.*, p.name AS petrol_name,
                        IFNULL(s.qty_liters,0) AS qty_liters
@@ -15,9 +16,35 @@ class Container extends Database {
         return $this->getConnection()->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function listFiltered(string $q = '', ?int $status = null): array {
+        $pdo = $this->getConnection();
+        $sql = "SELECT c.*, p.name AS petrol_name,
+                       IFNULL(s.qty_liters,0) AS qty_liters
+                FROM container c
+                JOIN petrol_type_list p ON p.petrol_type_id = c.petrol_type_id
+                LEFT JOIN container_stock s ON s.container_id = c.container_id
+                WHERE 1=1";
+        $params = [];
+
+        if ($q !== '') {
+            $sql .= " AND (c.name LIKE :q OR p.name LIKE :q)";
+            $params[':q'] = "%$q%";
+        }
+        if ($status !== null) {
+            $sql .= " AND c.status = :st";
+            $params[':st'] = $status;
+        }
+
+        $sql .= " ORDER BY p.name, c.name";
+        $st = $pdo->prepare($sql);
+        $st->execute($params);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     public function find($id) {
         $st = $this->getConnection()->prepare(
-            "SELECT c.*, IFNULL(s.qty_liters,0) qty_liters FROM container c
+            "SELECT c.*, IFNULL(s.qty_liters,0) qty_liters
+             FROM container c
              LEFT JOIN container_stock s ON s.container_id=c.container_id
              WHERE c.container_id=?"
         );
@@ -30,7 +57,6 @@ class Container extends Database {
         $pdo->beginTransaction();
         try {
             if (!empty($data['is_default'])) {
-                // desmarcar otros default del mismo tipo
                 $upd = $pdo->prepare("UPDATE container SET is_default=0 WHERE petrol_type_id=?");
                 $upd->execute([$data['petrol_type_id']]);
             }

@@ -14,7 +14,7 @@ class SalesReport extends Database {
                 WHERE DATE(t.date_added) BETWEEN :dfrom AND :dto";
         $params = [':dfrom' => $from, ':dto' => $to];
 
-        if ($onlyUserId !== null) {
+        if ($onlyUserId !== null && $onlyUserId > 0) {
             $sql .= " AND t.user_id = :uid";
             $params[':uid'] = $onlyUserId;
         }

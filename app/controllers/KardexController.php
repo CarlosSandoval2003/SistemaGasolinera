@@ -13,7 +13,6 @@ class KardexController extends Controller
         if (session_status()===PHP_SESSION_NONE) session_start();
         if (($_SESSION['type'] ?? 0) != 1) { header("Location: index.php?url=home/index"); exit; }
 
-        // defaults de fecha (últimos 7 días)
         $df = $_GET['date_from'] ?? date('Y-m-d', strtotime('-7 days'));
         $dt = $_GET['date_to']   ?? date('Y-m-d');
 
@@ -30,9 +29,9 @@ class KardexController extends Controller
         $open = $this->model->openingBalance($filters['container_id'], $filters['date_from']);
 
         $this->render('kardex/index', [
-            'rows'     => $rows,
-            'open_bal' => $open,
-            'filters'  => $filters,
+            'rows'       => $rows,
+            'open_bal'   => $open,
+            'filters'    => $filters,
             'containers' => $this->model->containers(),
             'types'      => $this->model->petrolTypes(),
             'users'      => $this->model->users(),
@@ -62,7 +61,6 @@ class KardexController extends Controller
         header('Content-Type: text/csv; charset=UTF-8');
         header("Content-Disposition: attachment; filename=\"$filename\"");
         $out = fopen('php://output','w');
-        // BOM para Excel
         fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF));
 
         $withSaldo = !empty($filters['container_id']);
@@ -100,5 +98,24 @@ class KardexController extends Controller
         }
         fclose($out);
         exit;
+    }
+
+    /** Detalle para TRANSFER_* y ADJUST (modal resumen) */
+    public function detail($tx_id){
+        if (session_status()===PHP_SESSION_NONE) session_start();
+        if (!isset($_SESSION['user_id'])) { http_response_code(403); echo 'Forbidden'; return; }
+
+        $tx = $this->model->getTxById((int)$tx_id);
+        if (!$tx) { echo 'Movimiento no encontrado'; return; }
+
+        $transfer = null;
+        if (in_array($tx['kind'], ['TRANSFER_IN','TRANSFER_OUT'], true) && !empty($tx['ref_id'])) {
+            $transfer = $this->model->transferPair((int)$tx['ref_id']);
+        }
+
+        $this->render('kardex/transfer_detail', [
+            'tx'       => $tx,
+            'transfer' => $transfer
+        ], null, false);
     }
 }

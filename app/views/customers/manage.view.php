@@ -1,82 +1,62 @@
 <div class="container-fluid">
-    <form action="" id="customer-form">
-        <input type="hidden" name="id" value="<?= $customer['customer_id'] ?? '' ?>">
-        <div class="col-12">
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="fullname" class="control-label">Nombre Cliente</label>
-                        <input type="text" name="fullname" autofocus id="fullname" required class="form-control form-control-sm rounded-0" value="<?= $customer['fullname'] ?? '' ?>">
-                    </div>
-                    <div class="form-group">
-                        <label for="email" class="control-label">Email</label>
-                        <input type="text" name="email" id="email" required class="form-control form-control-sm rounded-0" value="<?= $customer['email'] ?? '' ?>">
-                    </div>
-                    <div class="form-group">
-                        <label for="contact" class="control-label">Contacto</label>
-                        <input type="text" name="contact" id="contact" required class="form-control form-control-sm rounded-0" value="<?= $customer['contact'] ?? '' ?>">
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="address" class="control-label">Dirección</label>
-                        <textarea name="address" id="address" cols="30" rows="3" class="form-control rounded-0" required><?= $customer['address'] ?? '' ?></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="status" class="control-label">Estado</label>
-                        <select name="status" id="status" class="form-select form-select-sm rounded-0" required>
-                            <option value="1" <?= (isset($customer['status']) && $customer['status'] == 1) ? 'selected' : '' ?>>Activo</option>
-                            <option value="0" <?= (isset($customer['status']) && $customer['status'] == 0) ? 'selected' : '' ?>>Inactivo</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </form>
+  <form id="customer-form">
+    <input type="hidden" name="id" value="<?= $customer['customer_id'] ?? '' ?>">
+
+    <?php
+      $full  = $customer['fullname'] ?? '';
+      $parts = preg_split('/\s+/', trim($full), 2);
+      $first = $parts[0] ?? '';
+      $last  = $parts[1] ?? '';
+    ?>
+
+    <div class="row g-2">
+      <div class="col-md-4">
+        <label class="form-label">Nombres</label>
+        <input class="form-control form-control-sm" name="first_name" required
+               value="<?= htmlspecialchars($first) ?>">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Apellidos</label>
+        <input class="form-control form-control-sm" name="last_name" required
+               value="<?= htmlspecialchars($last) ?>">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">NIT</label>
+        <input class="form-control form-control-sm" name="nit" required
+               value="<?= htmlspecialchars($customer['customer_code'] ?? '') ?>">
+        <div class="form-text">Se usa como identificador del cliente.</div>
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label">Estado</label>
+        <select class="form-select form-select-sm" name="status">
+          <option value="1" <?= (!isset($customer['status']) || (int)$customer['status']===1)?'selected':'' ?>>Activo</option>
+          <option value="0" <?= (isset($customer['status']) && (int)$customer['status']===0)?'selected':'' ?>>Inactivo</option>
+        </select>
+      </div>
+    </div>
+  </form>
 </div>
 
 <script>
-$(function(){
-    $('#customer-form').submit(function(e){
-        e.preventDefault();
-        $('.pop_msg').remove()
-        let _this = $(this)
-        let _el = $('<div>').addClass('pop_msg')
-
-        $('#uni_modal button').attr('disabled', true)
-        $('#uni_modal button[type="submit"]').text('Submitting form...')
-
-        $.ajax({
-            url: 'index.php?url=customer/save',
-            data: new FormData(_this[0]),
-            cache: false,
-            contentType: false,
-            processData: false,
-            method: 'POST',
-            dataType: 'json',
-            error: err => {
-                console.log(err)
-                _el.addClass('alert alert-danger').text("An error occurred.")
-                _this.prepend(_el).hide().show('slow')
-                $('#uni_modal button').attr('disabled', false)
-                $('#uni_modal button[type="submit"]').text('Save')
-            },
-            success: function(resp){
-                if(resp.status == 'success'){
-                    _el.addClass('alert alert-success').text(resp.msg)
-                    $('#uni_modal').on('hide.bs.modal', function(){
-                        location.reload()
-                    })
-                    if (!"<?= isset($customer['customer_id']) ?>")
-                        _this.get(0).reset()
-                } else {
-                    _el.addClass('alert alert-danger').text(resp.msg)
-                }
-                _this.prepend(_el).hide().show('slow')
-                $('#uni_modal button').attr('disabled', false)
-                $('#uni_modal button[type="submit"]').text('Save')
-            }
-        })
-    })
-})
+$('#customer-form').on('submit', function(e){
+  e.preventDefault();
+  $.ajax({
+    url: 'index.php?url=customer/save',
+    method: 'POST',
+    data: $(this).serialize(),
+    dataType: 'json',
+    success: function(resp){
+      if(resp.status==='success'){
+        $('#uni_modal').modal('hide');
+        location.reload();
+      }else{
+        alert(resp.msg||'Error');
+      }
+    },
+    error: function(xhr){
+      alert('Error del servidor:\n'+(xhr.responseText||'')); console.error(xhr.responseText);
+    }
+  });
+});
 </script>
