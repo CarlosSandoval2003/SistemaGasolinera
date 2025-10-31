@@ -100,7 +100,7 @@ $(function(){
 function delete_petrol_type(id){
   $('#confirm_modal button').attr('disabled',true);
   $.ajax({
-    url:'index.php?url=petroltype/delete',
+    url:'index.php?url=petrolType/delete',
     method:'POST',
     data:{id:id},
     dataType:'json',
