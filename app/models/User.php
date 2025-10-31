@@ -38,51 +38,59 @@ class User {
         return (bool)$st->fetchColumn();
     }
 
+    /** Compatibilidad MD5 (32 hex) y password_hash */
     private function verifyPasswordHash(string $plain, string $hash): bool {
-        // Compatibilidad con MD5 legado (32 chars hex) vs password_hash moderno
         if (preg_match('/^[a-f0-9]{32}$/i', $hash)) {
             return md5($plain) === $hash;
         }
         return password_verify($plain, $hash);
     }
 
+    /** Expuesta para login (no cambies nombre existentes usados por login) */
+    public function verifyPasswordForLogin(string $plain, string $hash): bool {
+        return $this->verifyPasswordHash($plain, $hash);
+    }
+
+    /**
+     * Mantengo la firma para compatibilidad,
+     * pero sólo cambia la contraseña (no fullname/username).
+     */
     public function updateAccount(int $id, string $fullname, string $username, ?string $oldPass, ?string $newPass): array {
-        // 1) Username duplicado
-        if ($this->usernameExists($username, $id)) {
-            return ['ok' => false, 'msg' => 'El nombre de usuario ya está en uso.'];
+        if (empty($newPass)) {
+            return ['ok' => false, 'msg' => 'Nueva contraseña requerida.'];
+        }
+        if (empty($oldPass)) {
+            return ['ok' => false, 'msg' => 'Debes ingresar tu contraseña actual.'];
         }
 
-        // 2) ¿Hay cambio de contraseña?
-        $setPassword = false;
-        $newHash = null;
-
-        if (!empty($newPass)) {
-            // Necesitamos verificar el password actual
-            if (empty($oldPass)) {
-                return ['ok' => false, 'msg' => 'Debes ingresar tu contraseña actual para cambiarla.'];
-            }
-            $st = $this->conn->prepare("SELECT password FROM user_list WHERE user_id = ?");
-            $st->execute([$id]);
-            $currentHash = $st->fetchColumn();
-            if (!$currentHash || !$this->verifyPasswordHash($oldPass, $currentHash)) {
-                return ['ok' => false, 'msg' => 'La contraseña actual no es correcta.'];
-            }
-            $newHash = password_hash($newPass, PASSWORD_DEFAULT);
-            $setPassword = true;
+        // Verificar contraseña actual
+        $st = $this->conn->prepare("SELECT password FROM user_list WHERE user_id = ?");
+        $st->execute([$id]);
+        $currentHash = $st->fetchColumn();
+        if (!$currentHash) return ['ok'=>false,'msg'=>'Usuario no existe.'];
+        if (!$this->verifyPasswordHash($oldPass, $currentHash)) {
+            return ['ok'=>false,'msg'=>'La contraseña actual no es correcta.'];
         }
 
-        // 3) Update
-        if ($setPassword) {
-            $sql = "UPDATE user_list SET fullname = ?, username = ?, password = ? WHERE user_id = ?";
-            $params = [$fullname, $username, $newHash, $id];
-        } else {
-            $sql = "UPDATE user_list SET fullname = ?, username = ? WHERE user_id = ?";
-            $params = [$fullname, $username, $id];
-        }
+        $newHash = password_hash($newPass, PASSWORD_DEFAULT);
+        $up = $this->conn->prepare("UPDATE user_list SET password = ? WHERE user_id = ?");
+        $ok = $up->execute([$newHash, $id]);
+        return $ok ? ['ok'=>true] : ['ok'=>false,'msg'=>'No se pudo actualizar la contraseña.'];
+    }
 
-        $st = $this->conn->prepare($sql);
-        $ok = $st->execute($params);
+    /** Primer uso: establece contraseña SIN pedir la actual y limpia el flag */
+    public function setPasswordFirstUse(int $id, string $newPass): array {
+        if (empty($newPass)) return ['ok'=>false,'msg'=>'Nueva contraseña requerida.'];
 
-        return $ok ? ['ok' => true] : ['ok' => false, 'msg' => 'No se pudo actualizar.'];
+        $st = $this->conn->prepare("SELECT first_use_password FROM user_list WHERE user_id=?");
+        $st->execute([$id]);
+        $flag = $st->fetchColumn();
+        if ($flag === false) return ['ok'=>false,'msg'=>'Usuario no existe.'];
+        if ((int)$flag !== 1)  return ['ok'=>false,'msg'=>'Este usuario no requiere cambio de primer uso.'];
+
+        $newHash = password_hash($newPass, PASSWORD_DEFAULT);
+        $up = $this->conn->prepare("UPDATE user_list SET password=?, first_use_password=0 WHERE user_id=?");
+        $ok = $up->execute([$newHash, $id]);
+        return $ok ? ['ok'=>true] : ['ok'=>false,'msg'=>'No se pudo guardar la nueva contraseña.'];
     }
 }

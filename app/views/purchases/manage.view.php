@@ -24,15 +24,14 @@
     <div class="table-responsive">
       <table class="table table-sm table-bordered align-middle" id="items">
         <thead class="table-light">
-  <tr>
-    <th style="width:45%">Gasolina</th>
-    <th class="text-end" style="width:20%">Galones (gal)</th>
-    <th class="text-end" style="width:20%">Costo (Q/gal)</th>
-    <th class="text-end" style="width:15%">Total línea (Q)</th>
-    <th style="width:5%"></th>
-  </tr>
-</thead>
-
+          <tr>
+            <th style="width:45%">Gasolina</th>
+            <th class="text-end" style="width:20%">Galones (gal)</th>
+            <th class="text-end" style="width:20%">Costo (Q/gal)</th>
+            <th class="text-end" style="width:15%">Total línea (Q)</th>
+            <th style="width:5%"></th>
+          </tr>
+        </thead>
         <tbody></tbody>
         <tfoot>
           <tr>
@@ -44,16 +43,27 @@
       </table>
     </div>
 
-    <button type="button" class="btn btn-secondary btn-sm" id="add-line">Agregar ítem</button>
-    <button type="submit" class="btn btn-primary btn-sm" id="save-purchase">Guardar orden</button>
-    <button type="button" class="btn btn-dark btn-sm" data-bs-dismiss="modal">Cerrar</button>
+    <div class="mt-2 d-flex gap-2 justify-content-end">
+      <button type="button" class="btn btn-secondary btn-sm" id="add-line">Agregar ítem</button>
+      <button type="submit" class="btn btn-primary btn-sm" id="save-purchase">Guardar orden</button>
+      <button type="button" class="btn btn-dark btn-sm" data-bs-dismiss="modal">Cerrar</button>
+    </div>
   </form>
 </div>
 
 <script>
 (function(){
-  // 👉 ahora 'types' debe incluir purchase_price_gal
-  const types = <?= json_encode($types ?? []) ?>; // cada item: { petrol_type_id, name, purchase_price_gal, ... }
+  // --- Ocultar footer global del modal para evitar botones duplicados ---
+  const $modal   = $('#uni_modal');
+  const $footer  = $modal.find('.modal-footer');
+  const prevHTML = $footer.html();      // guardar
+  $footer.empty().addClass('d-none');   // ocultar solo en este view
+  $modal.one('hidden.bs.modal', function(){
+    $footer.removeClass('d-none').html(prevHTML); // restaurar para otros modales
+  });
+
+  // 👉 ahora 'types' incluye purchase_price_gal
+  const types = <?= json_encode($types ?? []) ?>; // { petrol_type_id, name, purchase_price_gal }
   const costByType = {};
   (types||[]).forEach(t => costByType[t.petrol_type_id] = parseFloat(t.purchase_price_gal || 0));
 
@@ -69,7 +79,7 @@
           ${fuelOptions}
         </select>
       </td>
-      <td><input type="number" step="any" name="qty_liters[]" class="form-control form-control-sm qty text-end" value="0" min="0.0001"></td>
+      <td><input type="number" step="any" name="qty_liters[]" class="form-control form-control-sm qty text-end" value="0" min="0.0001" required></td>
       <td><input type="number" step="0.0001" class="form-control form-control-sm cost text-end" value="0" readonly tabindex="-1"></td>
       <td class="text-end lt">0.00</td>
       <td class="text-center"><button type="button" class="btn btn-sm btn-danger del">&times;</button></td>
@@ -96,9 +106,7 @@
 
   function addRow(focus=true){
     $tb.append(rowTpl());
-    if(focus){
-      $tb.find('tr:last .fuel').focus();
-    }
+    if(focus){ $tb.find('tr:last .fuel').focus(); }
   }
 
   // init
@@ -131,18 +139,38 @@
   // submit
   $('#purchase-form').on('submit', function(e){
     e.preventDefault();
+
+    // Valida mínimo una línea válida
+    const $rows = $tb.find('tr');
+    const hasLine = $rows.toArray().some(tr=>{
+      const f = $(tr).find('.fuel').val();
+      const q = parseFloat($(tr).find('.qty').val()||0);
+      return f && q > 0;
+    });
+    if(!hasLine){ alert('Agrega al menos un ítem válido.'); return; }
+
+    // Deshabilitar SOLO botones del formulario para evitar doble submit
+    const $form = $(this);
+    $form.find('button').prop('disabled', true);
+
     $.ajax({
       url: 'index.php?url=purchase/save',
       method:'POST',
-      data: $(this).serialize(),   // el backend IGNORA cualquier costo y usa BD
-      dataType:'json',
-      success: resp=>{
-        if(resp.status==='success'){
-          uni_modal('Orden de compra', resp.redirect, 'large');
-          $('#uni_modal').on('hidden.bs.modal',()=> location.reload());
-        }else alert(resp.msg||'Error');
-      },
-      error: ()=> alert('Error')
+      data: $form.serialize(),   // el backend usará costos desde BD
+      dataType:'json'
+    })
+    .done(resp=>{
+      if(resp.status==='success'){
+        uni_modal('Orden de compra', resp.redirect, 'large');
+        $('#uni_modal').on('hidden.bs.modal',()=> location.reload());
+      }else{
+        alert(resp.msg||'Error');
+        $form.find('button').prop('disabled', false);
+      }
+    })
+    .fail(()=> {
+      alert('Error');
+      $form.find('button').prop('disabled', false);
     });
   });
 })();

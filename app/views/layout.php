@@ -1,17 +1,22 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title><?= $title ?? 'Petrol Station' ?></title>
-    <link rel="stylesheet" href="/psms/public/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/psms/public/DataTables/datatables.min.css">
-    <link rel="stylesheet" href="/psms/public/Font-Awesome-master/css/all.min.css">
-    <script src="/psms/public/js/jquery-3.6.0.min.js"></script>
-    <script src="/psms/public/js/popper.min.js"></script>
-    <script src="/psms/public/js/bootstrap.min.js"></script>
-    <script src="/psms/public/DataTables/datatables.min.js"></script>
-    <script src="/psms/public/Font-Awesome-master/js/all.min.js"></script>
-    <script src="/psms/public/js/script.js"></script>
+
+    <!-- Rutas de assets absolutas con BASE_URL -->
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+<link rel="stylesheet" href="/DataTables/datatables.min.css">
+<link rel="stylesheet" href="/Font-Awesome-master/css/all.min.css">
+
+<script src="/js/jquery-3.6.0.min.js"></script>
+<script src="/js/bootstrap.bundle.min.js"></script> <!-- bundle incluye Popper -->
+<script src="/DataTables/datatables.min.js"></script>
+<script src="/Font-Awesome-master/js/all.min.js"></script>
+<script src="/js/script.js"></script>
+
+
+
     <style>
         html, body { height: 100%; width: 100%; }
         main { height: 100%; display: flex; flex-direction: column; }
@@ -28,8 +33,9 @@
 </head>
 <body>
     <main>
+        <?php include VIEW_PATH . '/partials/force_change_guard.php'; ?>
         <!-- Navbar -->
-        <?php include '../app/views/partials/navbar.php'; ?>
+        <?php include VIEW_PATH . '/partials/navbar.php'; ?>
 
         <!-- Contenido dinámico -->
         <div class="container py-3" id="page-container">
@@ -38,6 +44,6 @@
     </main>
 
     <!-- Modales globales -->
-    <?php include '../app/views/partials/modals.php'; ?>
+    <?php include VIEW_PATH . '/partials/modals.php'; ?>
 </body>
 </html>

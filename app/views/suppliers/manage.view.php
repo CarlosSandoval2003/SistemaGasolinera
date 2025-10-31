@@ -1,6 +1,6 @@
 <div class="container-fluid">
   <form id="supplier-form">
-    <input type="hidden" name="id" value="<?= $supplier['supplier_id'] ?? '' ?>">
+    <input type="hidden" name="id" value="<?= isset($supplier['supplier_id']) ? (int)$supplier['supplier_id'] : '' ?>">
 
     <div class="row g-2">
       <!-- Código (si no hay, lo genera backend) -->

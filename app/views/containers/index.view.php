@@ -43,17 +43,29 @@ $qServer = $q ?? '';
       <tbody id="cont-tbody">
       <?php if (!empty($containers)): $i=1; foreach($containers as $c):
         // SIN conversiones: mostramos los números tal cual vienen de BD (litros),
-        // solo cambiamos la ETIQUETA visual a “(gal)” como pediste.
+        // solo cambiamos la ETIQUETA visual a “(gal)”.
         $cap = (float)$c['capacity_liters'];
         $stk = (float)$c['qty_liters'];
+        $min = (float)($c['min_level_liters'] ?? 0);
         $pct = $cap>0 ? ($stk/$cap*100) : 0;
+        $isLow = $stk <= $min; // marcar mínimo alcanzado/sobrepasado a la baja
       ?>
-        <tr data-status="<?= (int)$c['status'] ?>">
+        <tr data-status="<?= (int)$c['status'] ?>" class="<?= $isLow ? 'table-danger' : '' ?>">
           <td class="text-center idx"><?= $i++ ?></td>
-          <td class="name"><?= htmlspecialchars($c['name']) ?></td>
+          <td class="name d-flex align-items-center gap-2">
+            <?= htmlspecialchars($c['name']) ?>
+            <?php if ($isLow): ?>
+              <span class="badge bg-danger" title="En o por debajo del mínimo">Mínimo</span>
+            <?php endif; ?>
+          </td>
           <td class="fuel"><?= htmlspecialchars($c['petrol_name']) ?></td>
           <td class="text-end cap"><?= number_format($cap, 2) ?></td>
-          <td class="text-end stk"><?= number_format($stk, 2) ?></td>
+          <td class="text-end stk <?= $isLow ? 'text-danger fw-semibold' : '' ?>">
+            <?= number_format($stk, 2) ?>
+            <?php if ($isLow): ?>
+              <i class="fa fa-exclamation-triangle ms-1" title="Stock en mínimo"></i>
+            <?php endif; ?>
+          </td>
           <td class="text-center"><?= number_format($pct,1) ?>%</td>
           <td class="text-center">
             <?php if (!empty($c['is_default'])): ?>
@@ -64,7 +76,6 @@ $qServer = $q ?? '';
           </td>
           <td class="text-center">
             <div class="btn-group btn-group-sm">
-              <!-- Botón Kardex eliminado -->
               <button class="btn btn-outline-primary edit" data-id="<?= (int)$c['container_id'] ?>" data-bs-toggle="tooltip" title="Editar">
                 <i class="fa fa-pen"></i>
               </button>

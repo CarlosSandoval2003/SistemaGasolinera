@@ -50,7 +50,7 @@ $(function(){
     $('#uni_modal button[type="submit"]').text('Guardando...');
 
     $.ajax({
-      url: 'index.php?url=petroltype/save',
+      url: 'index.php?url=petrolType/save',
       method: 'POST',
       data: _this.serialize(),
       dataType: 'json',

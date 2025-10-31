@@ -40,100 +40,96 @@ class SalesController extends Controller {
     }
 
     /** Guardar venta */
-    public function save() {
-        if (session_status() === PHP_SESSION_NONE) session_start();
-        header('Content-Type: application/json');
+   public function save() {
+    $customer_id = null;
+    $isNewCustomer = false;
+    $newCustomerName = null;
 
-        try {
-            if (empty($_SESSION['user_id'])) throw new \RuntimeException("No autenticado.");
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    header('Content-Type: application/json');
 
-            $petrol_type_id = (int)($_POST['petrol_type_id'] ?? 0);
-            $gallons        = (float)($_POST['gallons'] ?? 0);
-            $type           = (int)($_POST['type'] ?? 1); // 1=Efectivo, 3=Tarjeta
+    try {
+        if (empty($_SESSION['user_id'])) throw new \RuntimeException("No autenticado.");
 
-            if ($petrol_type_id <= 0) throw new \InvalidArgumentException("Seleccione gasolina.");
+        $petrol_type_id = (int)($_POST['petrol_type_id'] ?? 0);
+        $gallons        = (float)($_POST['gallons'] ?? 0);
+        $type           = (int)($_POST['type'] ?? 1);
 
-            // PRECIO desde BD (Q/gal)
-            $price = $this->model->getSalePriceGal($petrol_type_id);
-            if ($price <= 0) throw new \RuntimeException("Precio no disponible.");
+        if ($petrol_type_id <= 0) throw new \InvalidArgumentException("Seleccione gasolina.");
 
-            // ¿Qué fue la fuente en el front?
-            $src           = $_POST['src'] ?? 'gallons';      // 'amount' | 'gallons'
-            $typed_amount  = (float)($_POST['amount'] ?? 0);
+        $price = $this->model->getSalePriceGal($petrol_type_id);
+        if ($price <= 0) throw new \RuntimeException("Precio no disponible.");
 
-            // ===== Calcular usando centavos para evitar 99.99 =====
-            if ($src === 'amount' && $typed_amount > 0) {
-                // Importe es la verdad: lo respetamos exacto
-                $amount_cents = (int) round($typed_amount * 100, 0);
-                $amount_q     = $amount_cents / 100.0;
-                // galones = importe / precio (3 decimales)
-                $gallons      = (float) number_format(($amount_q / $price), 3, '.', '');
-            } else {
-                // Galones es la verdad
-                if ($gallons <= 0) throw new \InvalidArgumentException("Ingrese galones > 0.");
-                $amount_cents = (int) round(($gallons * $price) * 100, 0);
-                $amount_q     = $amount_cents / 100.0;
-                // normaliza galones
-                $gallons      = (float) number_format($gallons, 3, '.', '');
-            }
+        $src           = $_POST['src'] ?? 'gallons';
+        $typed_amount  = (float)($_POST['amount'] ?? 0);
 
-            // Totales
-            $total_cents = $amount_cents;
-            $total_q     = $amount_q;
-
-            // Pago / cambio
-            $tendered = (float)($_POST['tendered_amount'] ?? 0);
-            if ($type === 3) { // Tarjeta: simulado, tendered=total y cambio=0
-                $tendered = $total_q;
-            }
-
-            $change_cents = $type === 1 ? (int) round($tendered * 100) - $total_cents : 0;
-            if ($type === 1 && $change_cents < 0) {
-                echo json_encode(['status'=>'error','msg'=>'Pago recibido menor al total.']); return;
-            }
-
-            // Flujo CF/NIT
-            $cf_or_nit  = $_POST['cf_or_nit'] ?? 'CF'; // 'CF' o 'NIT'
-            $nit_val    = trim($_POST['nit'] ?? '');
-            $customer_id = null;
-
-            if ($cf_or_nit === 'NIT') {
-                if ($nit_val === '') throw new \InvalidArgumentException("Ingrese NIT.");
-                $sat = $this->model->findSatByNit($nit_val);
-                if (!$sat) throw new \RuntimeException("NIT no encontrado en SAT simulado.");
-                $customer_id = $this->model->ensureCustomerFromSAT($sat);
-            }
-
-            // Cadenas fijas para BD (evita drift)
-            $price_str   = sprintf('%.4f', $price);
-            $gals_str    = sprintf('%.3f', $gallons);
-            $amount_str  = sprintf('%.2f', $amount_q);
-            $total_str   = sprintf('%.2f', $total_q);
-            $tender_str  = sprintf('%.2f', $tendered);
-            $change_str  = sprintf('%.2f', $change_cents / 100);
-
-            // Guardar transacción (el modelo también descuenta stock y kardex)
-            [$id, $rcpt] = $this->model->saveTransaction([
-                'customer_id'     => $customer_id ? (int)$customer_id : null,
-                'petrol_type_id'  => $petrol_type_id,
-                'price'           => $price_str,   // Q/gal (4)
-                'gallons'         => $gals_str,    // gal (3) – se guarda en campo 'liter'
-                'amount'          => $amount_str,  // Q (2)
-                'total'           => $total_str,   // Q (2)
-                'tendered_amount' => $tender_str,  // Q (2)
-                'change'          => $change_str,  // Q (2)
-                'type'            => $type,        // 1=Efectivo, 3=Tarjeta
-            ], (int)$_SESSION['user_id']);
-
-            echo json_encode([
-                'status'          => 'success',
-                'msg'             => 'Venta guardada',
-                'transaction_id'  => $id
-            ]);
-        } catch (\Throwable $e) {
-            echo json_encode(['status' => 'error', 'msg' => 'ERROR: '.$e->getMessage()]);
+        if ($src === 'amount' && $typed_amount > 0) {
+            $amount_cents = (int) round($typed_amount * 100, 0);
+            $amount_q     = $amount_cents / 100.0;
+            $gallons      = (float) number_format(($amount_q / $price), 3, '.', '');
+        } else {
+            if ($gallons <= 0) throw new \InvalidArgumentException("Ingrese galones > 0.");
+            $amount_cents = (int) round(($gallons * $price) * 100, 0);
+            $amount_q     = $amount_cents / 100.0;
+            $gallons      = (float) number_format($gallons, 3, '.', '');
         }
+
+        $total_cents = $amount_cents;
+        $total_q     = $amount_q;
+
+        $tendered = (float)($_POST['tendered_amount'] ?? 0);
+        if ($type === 3) { $tendered = $total_q; }
+
+        $change_cents = $type === 1 ? (int) round($tendered * 100) - $total_cents : 0;
+        if ($type === 1 && $change_cents < 0) {
+            echo json_encode(['status'=>'error','msg'=>'Pago recibido menor al total.']); return;
+        }
+
+        $cf_or_nit  = $_POST['cf_or_nit'] ?? 'CF';
+        $nit_val    = trim($_POST['nit'] ?? '');
+        $customer_id = null;
+
+        if ($cf_or_nit === 'NIT') {
+            if ($nit_val === '') throw new \InvalidArgumentException("Ingrese NIT.");
+            $sat = $this->model->findSatByNit($nit_val);
+            if (!$sat) throw new \RuntimeException("NIT no encontrado en SAT simulado.");
+            $res = $this->model->ensureCustomerFromSAT($sat);
+            $customer_id     = (int)$res['id'];
+            $isNewCustomer   = (bool)$res['is_new'];
+            $newCustomerName = $res['fullname'] ?? null;
+        }
+
+        $price_str   = sprintf('%.4f', $price);
+        $gals_str    = sprintf('%.3f', $gallons);
+        $amount_str  = sprintf('%.2f', $amount_q);
+        $total_str   = sprintf('%.2f', $total_q);
+        $tender_str  = sprintf('%.2f', $tendered);
+        $change_str  = sprintf('%.2f', $change_cents / 100);
+
+        [$id, $rcpt] = $this->model->saveTransaction([
+            'customer_id'     => $customer_id ? (int)$customer_id : null,
+            'petrol_type_id'  => $petrol_type_id,
+            'price'           => $price_str,
+            'gallons'         => $gals_str,
+            'amount'          => $amount_str,
+            'total'           => $total_str,
+            'tendered_amount' => $tender_str,
+            'change'          => $change_str,
+            'type'            => $type,
+        ], (int)$_SESSION['user_id']);
+
+        echo json_encode([
+            'status'            => 'success',
+            'msg'               => 'Venta guardada',
+            'transaction_id'    => $id,
+            'new_customer'      => $isNewCustomer,
+            'customer_fullname' => $newCustomerName
+        ]);
+    } catch (\Throwable $e) {
+        echo json_encode(['status' => 'error', 'msg' => 'ERROR: '.$e->getMessage()]);
     }
+}
+
 
     public function receipt($id) {
         $data = $this->model->getReceipt((int)$id);

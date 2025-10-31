@@ -5,43 +5,37 @@ use App\Core\Controller;
 use App\Models\SalesReport;
 
 class SalesReportController extends Controller {
-    private $model;
+    private SalesReport $model;
 
-    public function __construct() {
+    public function __construct(){
         $this->model = new SalesReport();
     }
 
-    public function index() {
+    public function index(){
         if (session_status() === PHP_SESSION_NONE) session_start();
 
-        $dfrom = $_GET['date_from'] ?? date("Y-m-d", strtotime("-1 week"));
-        $dto   = $_GET['date_to']   ?? date("Y-m-d");
+        // ✅ Defaults: desde = hoy - 7 días, hasta = hoy
+        $dfrom   = $_GET['date_from'] ?? date('Y-m-d', strtotime('-7 days'));
+        $dto     = $_GET['date_to']   ?? date('Y-m-d');
 
-        // Validación de rango de fechas (servidor)
+        $nit     = trim($_GET['nit'] ?? '');
+        $receipt = trim($_GET['receipt'] ?? '');
+
         $date_error = null;
-        $tsFrom = strtotime($dfrom);
-        $tsTo   = strtotime($dto);
-        if ($tsFrom === false || $tsTo === false || $tsFrom > $tsTo) {
-            $date_error = 'Rango de fechas inválido. Verifica "Desde" y "Hasta".';
+        if ($dfrom && $dto && $dfrom > $dto) {
+            $date_error = 'Rango de fechas inválido.';
         }
 
-        // Si no es admin (type != 1), limitar por usuario
-        $onlyUserId = (isset($_SESSION['type']) && (int)$_SESSION['type'] !== 1)
-            ? (int)($_SESSION['user_id'] ?? 0)
-            : null;
+        $rows = $date_error ? [] : $this->model->getTransactions($dfrom, $dto, null, $nit, $receipt);
 
-        $rows = [];
-        if ($date_error === null) {
-            $rows = $this->model->getTransactions($dfrom, $dto, $onlyUserId);
-        }
-
-        $this->render('sales_report/index', [
+        $this->render('salesReport/index', [
             'rows'       => $rows,
             'dfrom'      => $dfrom,
             'dto'        => $dto,
             'date_error' => $date_error,
+            'filters'    => ['nit' => $nit, 'receipt' => $receipt],
             'page'       => 'sales_report',
-            'title'      => 'Reporte de Ventas | Gasolinera'
+            'title'      => 'Reporte de Ventas'
         ]);
     }
 }

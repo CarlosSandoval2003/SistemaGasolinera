@@ -33,26 +33,29 @@ class Sale extends Database {
     }
 
     /** Garantiza cliente en customer_list a partir de una fila SAT; regresa customer_id */
-    public function ensureCustomerFromSAT(array $satRow): int {
-        $db = $this->getConnection();
+public function ensureCustomerFromSAT(array $satRow): array {
+    $db = $this->getConnection();
 
-        // ¿Existe?
-        $st = $db->prepare("SELECT customer_id FROM customer_list WHERE customer_code = ? LIMIT 1");
-        $st->execute([$satRow['nit']]);
-        $cid = $st->fetchColumn();
-        if ($cid) return (int)$cid;
-
-        // Crear
-        $ins = $db->prepare("
-            INSERT INTO customer_list (customer_code, fullname, contact, email, address, status)
-            VALUES (:code, :fullname, '', '', '', 1)
-        ");
-        $ins->execute([
-            ':code'     => $satRow['nit'],
-            ':fullname' => $satRow['fullname']
-        ]);
-        return (int)$db->lastInsertId();
+    // ¿Existe?
+    $st = $db->prepare("SELECT customer_id FROM customer_list WHERE customer_code = ? LIMIT 1");
+    $st->execute([$satRow['nit']]);
+    $cid = $st->fetchColumn();
+    if ($cid) {
+        return ['id' => (int)$cid, 'is_new' => false, 'fullname' => $satRow['fullname']];
     }
+
+    // Crear
+    $ins = $db->prepare("
+        INSERT INTO customer_list (customer_code, fullname, contact, email, address, status)
+        VALUES (:code, :fullname, '', '', '', 1)
+    ");
+    $ins->execute([
+        ':code'     => $satRow['nit'],
+        ':fullname' => $satRow['fullname']
+    ]);
+    return ['id' => (int)$db->lastInsertId(), 'is_new' => true, 'fullname' => $satRow['fullname']];
+}
+
 
     private function newReceiptNo(PDO $db) {
         return date('Ym') . '-' . strtoupper(substr(md5(uniqid('', true)), 0, 4));

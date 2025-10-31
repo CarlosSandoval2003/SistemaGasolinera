@@ -51,35 +51,37 @@ if (isset($_SESSION['user_id']) && $_SESSION['user_id'] > 0) {
 
 <script>
 $(function(){
-    $('#login-form').submit(function(e){
-        e.preventDefault();
-        $('#responseMsg').removeClass('alert-success alert-danger').hide();
-        let _this = $(this);
-        let $btn = _this.find('button[type="submit"]');
-        $btn.attr('disabled', true).text('Logging in...');
+  $('#login-form').submit(function(e){
+    e.preventDefault();
+    $('#responseMsg').removeClass('alert-success alert-danger').hide();
+    const _this = $(this);
+    const $btn = _this.find('button[type="submit"]');
+    $btn.attr('disabled', true).text('Logging in...');
 
-        $.ajax({
-            url: 'index.php?url=auth/login',
-            method: 'POST',
-            data: _this.serialize(),
-            dataType: 'JSON',
-            success: function(resp) {
-                if (resp.status === 'success') {
-                    $('#responseMsg').addClass('alert alert-success').text(resp.msg).slideDown();
-                    setTimeout(() => location.href = 'index.php?url=home/index', 1200);
-                } else {
-                    $('#responseMsg').addClass('alert alert-danger').text(resp.msg).slideDown();
-                }
-            },
-            error: function() {
-                $('#responseMsg').addClass('alert alert-danger').text("Error de conexión.").slideDown();
-            },
-            complete: function() {
-                $btn.attr('disabled', false).text('Login');
-            }
-        });
+    $.ajax({
+      url: 'index.php?url=auth/login',
+      method: 'POST',
+      data: _this.serialize(),
+      dataType: 'JSON',
+      success: function(resp) {
+        if (resp.status === 'success') {
+          $('#responseMsg').addClass('alert alert-success').text(resp.msg||'OK').slideDown();
+          const to = resp.redirect || (resp.force_change ? 'index.php?url=account/firstChange' : 'index.php?url=home/index');
+          setTimeout(()=> location.href = to, 700);
+        } else {
+          $('#responseMsg').addClass('alert alert-danger').text(resp.msg||'Error').slideDown();
+        }
+      },
+      error: function() {
+        $('#responseMsg').addClass('alert alert-danger').text("Error de conexión.").slideDown();
+      },
+      complete: function() {
+        $btn.attr('disabled', false).text('Login');
+      }
     });
+  });
 });
 </script>
+
 </body>
 </html>

@@ -82,9 +82,9 @@ class Users extends Database
         if ($status !== 0 && $status !== 1) $status = 1;
 
         if (empty($data['id'])) {
-            // Crear con password por defecto 123456 (uso único si luego agregas must_change_password)
-            $sql = "INSERT INTO user_list (fullname, username, password, type, status)
-                    VALUES (:fullname, :username, :password, :type, :status)";
+            // ✅ Crear con password por defecto 123456 y marcar primer uso
+            $sql = "INSERT INTO user_list (fullname, username, password, type, status, first_use_password)
+                    VALUES (:fullname, :username, :password, :type, :status, 1)";
             $st = $this->getConnection()->prepare($sql);
             return $st->execute([
                 ':fullname' => $data['fullname'],
@@ -144,7 +144,7 @@ class Users extends Database
         }
 
         if ($updatePass) {
-            $sql = "UPDATE user_list SET fullname=:fullname, username=:username, password=:password WHERE user_id=:id";
+            $sql = "UPDATE user_list SET fullname=:fullname, username=:username, password=:password, first_use_password=0 WHERE user_id=:id";
             $params = [':fullname'=>$fullname, ':username'=>$username, ':password'=>$newHash, ':id'=>$id];
         } else {
             $sql = "UPDATE user_list SET fullname=:fullname, username=:username WHERE user_id=:id";
@@ -156,9 +156,12 @@ class Users extends Database
         return $ok ? ['ok'=>true] : ['ok'=>false,'msg'=>'No se pudo actualizar.'];
     }
 
-    /** Resetea la contraseña a la predeterminada (123456) */
+    /** ✅ Resetea la contraseña a 123456 y marca first_use_password = 1 */
     public function resetPassword(int $id): bool {
-        $sql = "UPDATE user_list SET password = :pwd WHERE user_id = :id";
+        $sql = "UPDATE user_list
+                   SET password = :pwd,
+                       first_use_password = 1
+                 WHERE user_id = :id";
         $st  = $this->getConnection()->prepare($sql);
         return $st->execute([
             ':pwd' => password_hash('123456', PASSWORD_DEFAULT),

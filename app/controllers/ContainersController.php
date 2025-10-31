@@ -26,7 +26,7 @@ class ContainersController extends Controller {
                 || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false)
             );
             if ($isAjax) { http_response_code(403); echo 'Forbidden'; exit; }
-            header("Location: index.php?url=home/index");
+            header("Location: " . BASE_URL . "/home/index");
             exit;
         }
     }
@@ -41,7 +41,7 @@ class ContainersController extends Controller {
             'containers'=>$containers,
             'q'=>$q,
             'status'=>$status,
-            'page'=>'maintenance',
+            'page'=>'containers',
             'title'=>'Contenedores'
         ]);
     }
@@ -58,7 +58,6 @@ class ContainersController extends Controller {
         $this->guardMaintenance();
         header('Content-Type: application/json');
 
-        // ¡SIN conversiones! Todo sigue en litros.
         $name   = trim($_POST['name'] ?? '');
         $typeId = (int)($_POST['petrol_type_id'] ?? 0);
         $capL   = (float)($_POST['capacity_liters'] ?? 0);
@@ -66,7 +65,7 @@ class ContainersController extends Controller {
         $status = (int)($_POST['status'] ?? 1);
         $isDef  = !empty($_POST['is_default']) ? 1 : 0;
 
-        // Validaciones
+        // Validaciones básicas
         if ($name === '') { echo json_encode(['status'=>'error','msg'=>'El nombre es requerido.']); return; }
         if (mb_strlen($name) > 120) { echo json_encode(['status'=>'error','msg'=>'Nombre demasiado largo (máx 120).']); return; }
         if ($typeId <= 0) { echo json_encode(['status'=>'error','msg'=>'Selecciona el tipo de combustible.']); return; }
@@ -88,6 +87,7 @@ class ContainersController extends Controller {
             $ok = !empty($_POST['id'])
                 ? $this->container->update((int)$_POST['id'], $data)
                 : $this->container->create($data);
+
             echo json_encode(['status'=>$ok?'success':'error','msg'=>$ok?'Contenedor guardado.':'No se pudo guardar.']);
         } catch(\Throwable $e) {
             echo json_encode(['status'=>'error','msg'=>$e->getMessage()]);
@@ -102,7 +102,6 @@ class ContainersController extends Controller {
                           'msg'=>$ok?'Contenedor eliminado.':'No se pudo eliminar.']);
     }
 
-    // Sin botón en listado, pero disponible si lo llaman desde otro lado
     public function movements($id) {
         $this->guardMaintenance();
         $from = $_GET['date_from'] ?? null;
@@ -121,15 +120,35 @@ class ContainersController extends Controller {
             return;
         }
         header('Content-Type: application/json');
+
         $from  = (int)($_POST['from_container_id'] ?? 0);
         $to    = (int)($_POST['to_container_id'] ?? 0);
         $type  = (int)($_POST['petrol_type_id'] ?? 0);
         $lit   = (float)($_POST['qty_liters'] ?? 0);
         $note  = trim($_POST['note'] ?? '');
         $uid   = $_SESSION['user_id'] ?? null;
+
+        // Validaciones rápidas del controller
+        if ($from <= 0 || $to <= 0 || $type <= 0) {
+            echo json_encode(['status'=>'error','msg'=>'Selecciona combustible y contenedores.']); return;
+        }
+        if ($from === $to) {
+            echo json_encode(['status'=>'error','msg'=>'No puedes transferir al mismo contenedor.']); return;
+        }
+        if ($lit <= 0) {
+            echo json_encode(['status'=>'error','msg'=>'Los litros deben ser > 0.']); return;
+        }
+
         try {
-            $ok = $this->inventory->transfer($from,$to,$type,$lit,$note,$uid);
-            echo json_encode(['status'=>$ok?'success':'error','msg'=>$ok?'Transferencia realizada':'Error en transferencia']);
+            $res = $this->inventory->transfer($from,$to,$type,$lit,$note,$uid);
+            // $res puede ser bool o array(['ok'=>true,'warning'=>'...'])
+            if (is_array($res) && !empty($res['ok'])) {
+                echo json_encode(['status'=>'success','msg'=> !empty($res['warning']) ? $res['warning'] : 'Transferencia realizada']);
+            } elseif ($res === true) {
+                echo json_encode(['status'=>'success','msg'=>'Transferencia realizada']);
+            } else {
+                echo json_encode(['status'=>'error','msg'=>'Error en transferencia']);
+            }
         } catch(\Throwable $e) {
             echo json_encode(['status'=>'error','msg'=>$e->getMessage()]);
         }

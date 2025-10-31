@@ -3,7 +3,9 @@
     <h3 class="card-title mb-0">Empleados</h3>
     <div class="d-flex gap-2">
       <input type="search" id="q" class="form-control form-control-sm" placeholder="Buscar empleado (nombre, DPI, email, código)">
-      <button class="btn btn-dark btn-sm" id="btn-new">Nuevo</button>
+      <button class="btn btn-dark btn-sm" id="btn-new" data-bs-toggle="tooltip" title="Nuevo empleado">
+        <i class="fa fa-plus"></i>
+      </button>
     </div>
   </div>
 
@@ -14,7 +16,7 @@
           <tr>
             <th>#</th><th>Código</th><th>Nombre</th><th>Puesto</th>
             <th>DPI</th><th>Email</th><th>Teléfono</th>
-            <th class="text-end">Salario (Q)</th><th>Estado</th><th>Acción</th>
+            <th class="text-end">Salario (Q)</th><th>Estado</th><th class="text-center">Acción</th>
           </tr>
         </thead>
         <tbody id="emp-tbody">
@@ -27,12 +29,21 @@
               <td><?= htmlspecialchars($e['dpi']) ?></td>
               <td><?= htmlspecialchars($e['email']) ?></td>
               <td><?= htmlspecialchars($e['phone'] ?? '') ?></td>
-              <td class="text-end"><?= number_format($e['salary'],2) ?></td>
-              <td><?= $e['status']?'<span class="badge bg-success">Activo</span>':'<span class="badge bg-secondary">Inactivo</span>' ?></td>
-              <td>
+              <td class="text-end"><?= number_format((float)$e['salary'],2) ?></td>
+              <td><?= ($e['status']??0)?'<span class="badge bg-success">Activo</span>':'<span class="badge bg-secondary">Inactivo</span>' ?></td>
+              <td class="text-center">
                 <div class="btn-group btn-group-sm">
-                  <button class="btn btn-primary edit" data-id="<?= $e['employee_id'] ?>">Editar</button>
-                  <button class="btn btn-danger del" data-id="<?= $e['employee_id'] ?>" data-name="<?= htmlspecialchars($e['fullname']) ?>">Eliminar</button>
+                  <button class="btn btn-outline-primary edit"
+                          data-id="<?= (int)$e['employee_id'] ?>"
+                          data-bs-toggle="tooltip" title="Editar">
+                    <i class="fa fa-pen"></i>
+                  </button>
+                  <button class="btn btn-outline-danger del"
+                          data-id="<?= (int)$e['employee_id'] ?>"
+                          data-name="<?= htmlspecialchars($e['fullname']) ?>"
+                          data-bs-toggle="tooltip" title="Eliminar">
+                    <i class="fa fa-trash"></i>
+                  </button>
                 </div>
               </td>
             </tr>
@@ -46,65 +57,97 @@
 </div>
 
 <script>
-const $q = $('#q');
-const $tbody = $('#emp-tbody');
+(function(){
+  const $q = $('#q');
+  const $tbody = $('#emp-tbody');
 
-$('#btn-new').click(()=> uni_modal('Nuevo empleado','index.php?url=employee/manage','large'));
-$(document).on('click','.edit',function(){ uni_modal('Editar empleado','index.php?url=employee/manage&id='+$(this).data('id'),'large') });
-$(document).on('click','.del',function(){
-  _conf('¿Eliminar <b>'+$(this).data('name')+'</b>?','do_del',[ $(this).data('id') ]);
-});
-function do_del(id){
-  $.post('index.php?url=employee/delete',{id}, resp=>{
-    if(resp.status==='success') location.reload();
-    else alert(resp.msg||'Error');
-  },'json');
-}
-
-// Búsqueda (debounce simple)
-let t=null;
-$q.on('input', function(){
-  clearTimeout(t);
-  t = setTimeout(()=>{
-    const q = $q.val().trim();
-    $.get('index.php?url=employee/search', { q }, function(resp){
-      if(resp.status!=='success') return;
-      renderRows(resp.data);
-    }, 'json');
-  }, 250);
-});
-
-function renderRows(rows){
-  let html='';
-  if(!rows || !rows.length){
-    html = '<tr><td colspan="10" class="text-center">Sin resultados</td></tr>';
-  } else {
-    let idx=1;
-    rows.forEach(r=>{
-      html += `
-        <tr>
-          <td>${idx++}</td>
-          <td>${escapeHtml(r.code||'')}</td>
-          <td>${escapeHtml(r.fullname||'')}</td>
-          <td><!-- puesto no viene en search lite --></td>
-          <td>${escapeHtml(r.dpi||'')}</td>
-          <td>${escapeHtml(r.email||'')}</td>
-          <td>${escapeHtml(r.phone||'')}</td>
-          <td class="text-end"></td>
-          <td><!-- estado no viene en search lite --></td>
-          <td>
-            <div class="btn-group btn-group-sm">
-              <button class="btn btn-primary edit" data-id="${r.employee_id}">Editar</button>
-              <button class="btn btn-danger del" data-id="${r.employee_id}" data-name="${escapeHtml(r.fullname||'')}">Eliminar</button>
-            </div>
-          </td>
-        </tr>`;
-    });
+  // Init tooltips (Bootstrap 5)
+  function initTooltips(scope){
+    const els = (scope||document).querySelectorAll('[data-bs-toggle="tooltip"]');
+    els.forEach(el => new bootstrap.Tooltip(el));
   }
-  $tbody.html(html);
-}
+  initTooltips(document);
 
-function escapeHtml(s){
-  return (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
-}
+  // Botones
+  $('#btn-new').on('click', ()=> {
+    uni_modal('Nuevo empleado','index.php?url=employee/manage','large');
+  });
+
+  $(document).on('click','.edit', function(){
+    uni_modal('Editar empleado','index.php?url=employee/manage&id='+$(this).data('id'),'large');
+  });
+
+  $(document).on('click','.del', function(){
+    _conf('¿Eliminar <b>'+$(this).data('name')+'</b>?','do_del',[ $(this).data('id') ]);
+  });
+
+  window.do_del = function(id){
+    $.post('index.php?url=employee/delete',{id}, resp=>{
+      if(resp.status==='success') location.reload();
+      else alert(resp.msg||'Error');
+    },'json').fail(()=> alert('Error de red'));
+  };
+
+  // Búsqueda (debounce simple, server-side lite)
+  let t=null;
+  $q.on('input', function(){
+    clearTimeout(t);
+    t = setTimeout(()=>{
+      const q = $q.val().trim();
+      $.get('index.php?url=employee/search', { q }, function(resp){
+        if(resp.status!=='success') return;
+        renderRows(resp.data);
+      }, 'json').fail(()=>{/* silencioso */});
+    }, 250);
+  });
+
+  function renderRows(rows){
+    let html='';
+    if(!rows || !rows.length){
+      html = '<tr><td colspan="10" class="text-center">Sin resultados</td></tr>';
+    } else {
+      let idx=1;
+      rows.forEach(r=>{
+        // En búsqueda lite a veces no viene puesto/estado/salario -> dejamos celdas en blanco
+        html += `
+          <tr>
+            <td>${idx++}</td>
+            <td>${escapeHtml(r.code||'')}</td>
+            <td>${escapeHtml(r.fullname||'')}</td>
+            <td>${escapeHtml(r.position_name||'')}</td>
+            <td>${escapeHtml(r.dpi||'')}</td>
+            <td>${escapeHtml(r.email||'')}</td>
+            <td>${escapeHtml(r.phone||'')}</td>
+            <td class="text-end">${r.salary!==undefined ? Number(r.salary).toFixed(2) : ''}</td>
+            <td>${
+              r.status!==undefined
+                ? (Number(r.status)===1 ? "<span class='badge bg-success'>Activo</span>" : "<span class='badge bg-secondary'>Inactivo</span>")
+                : ''
+            }</td>
+            <td class="text-center">
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-primary edit"
+                        data-id="${Number(r.employee_id)||0}"
+                        data-bs-toggle="tooltip" title="Editar">
+                  <i class="fa fa-pen"></i>
+                </button>
+                <button class="btn btn-outline-danger del"
+                        data-id="${Number(r.employee_id)||0}"
+                        data-name="${escapeHtml(r.fullname||'')}"
+                        data-bs-toggle="tooltip" title="Eliminar">
+                  <i class="fa fa-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>`;
+      });
+    }
+    $tbody.html(html);
+    initTooltips($tbody[0]); // re-inicializa tooltips después de re-render
+  }
+
+  function escapeHtml(s){
+    return (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+  }
+})();
 </script>

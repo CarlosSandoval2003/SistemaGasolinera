@@ -115,41 +115,54 @@
               <!-- Solo tarjeta -->
               <div class="mt-2" id="btnPayCard" style="display:none">
                 <button type="button" class="btn btn-sm btn-outline-info w-100">
-                  Simular pago con tarjeta
+                  Pagar con tarjeta
                 </button>
               </div>
 
-              <!-- Hidden para pasar “autorización” simulada al backend -->
               <input type="hidden" name="card_auth" id="card_auth" value="">
-
             </div>
           </div>
         </div>
       </div>
 
       <input type="hidden" name="petrol_type_id" value="">
-      <input type="hidden" name="price" value="">  <!-- solo para mostrar; backend usa BD -->
-
-      <!-- === FIX CLAVE: fuente de verdad === -->
+      <input type="hidden" name="price" value="">
       <input type="hidden" name="src" id="src" value="gallons">
     </form>
   </div>
 </div>
 
+<!-- Modal OK previo a recibo -->
+<div class="modal fade" id="ok_sale_modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title">Confirmación</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div id="ok_sale_msg" class="lh-sm">
+          Venta realizada con éxito.
+        </div>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-primary btn-sm" id="ok_sale_btn">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
-  // ---------- Helpers de redondeo ----------
   const round2 = v => isFinite(v) ? Math.round((+v + Number.EPSILON) * 100) / 100 : 0;
   const round3 = v => isFinite(v) ? Math.round((+v + Number.EPSILON) * 1000) / 1000 : 0;
 
-  let lastEdited = null; // 'gallons' | 'amount' | null
+  let lastEdited = null;
 
-  // Bloquear hasta elegir gasolina
   $('input,select,button').not('#search').prop('disabled', true);
   $('#transaction-save-btn').prop('disabled', true);
   $('#btnFindNit').prop('disabled', true);
 
-  // Filtro catálogo
   $('#search').on('input', function(){
     const q = $(this).val().toLowerCase();
     $('.petrol-item').each(function(){
@@ -157,33 +170,27 @@
     });
   });
 
-  // Elegir gasolina
   $('.petrol-item').click(function(){
     $('.petrol-item .bcheck').hide();
     $(this).find('.bcheck').show();
 
     $('[name="petrol_type_id"]').val($(this).data('id'));
-    $('[name="price"]').val($(this).data('price')); // Q/gal (visual)
+    $('[name="price"]').val($(this).data('price'));
 
-    // Habilita formulario (pero deja campos de monto en blanco)
     $('input,select,button').prop('disabled', false);
     $('#transaction-save-btn').prop('disabled', false);
 
-    // Default CF
     $('#optCF').prop('checked', true);
     $('#nitRow').hide();
     $('#btnFindNit').prop('disabled', true);
 
-    // Mostrar/ocultar filas efectivo según tipo
     applyPaymentVisibility();
 
-    // Reinicia fuente hasta que el usuario escriba algo
     lastEdited = null;
     $('#src').val('gallons');
     $('#gallons,#amount,#total,#tendered_amount,#change').val('');
   });
 
-  // CF / NIT
   $('input[name="cf_or_nit"]').change(function(){
     if($(this).val()==='NIT'){
       $('#nitRow').show();
@@ -197,7 +204,6 @@
     }
   });
 
-  // Buscar NIT (AJAX)
   $('#btnFindNit').click(function(){
     const nit = $('#nit').val().trim();
     if(!nit){ $('#nitResult').text('Ingrese NIT.'); return; }
@@ -213,61 +219,48 @@
     }, 'json').fail(()=> $('#nitResult').text('Error de red.'));
   });
 
-  // Mostrar/ocultar filas según tipo de pago
   function applyPaymentVisibility(){
-    const t = $('#type').val(); // '1'=Efectivo, '3'=Tarjeta
+    const t = $('#type').val();
     if(t === '1'){
       $('#cashRow,#changeRow').show();
       $('#btnPayCard').hide();
     } else if (t === '3'){
       $('#cashRow,#changeRow').hide();
-      $('#tendered_amount,#change').val(''); // limpia
-      $('#btnPayCard').show(); // botón simular
+      $('#tendered_amount,#change').val('');
+      $('#btnPayCard').show();
     }
   }
 
-  // Tipo de pago
   $('#type').on('change', function(){
     applyPaymentVisibility();
-    // No tocamos amount si amount fue la fuente
     if($('#type').val()==='1'){
       recalcChange();
     }
   });
 
-  // Detecta campo fuente (=== FIX: setear #src ===)
   $('#gallons').on('input', function(){
     lastEdited = 'gallons';
-    $('#src').val('gallons');     // <<<<<< CLAVE
+    $('#src').val('gallons');
     recalcFromGallons();
   });
 
   $('#amount').on('input', function(){
     lastEdited = 'amount';
-    $('#src').val('amount');      // <<<<<< CLAVE
+    $('#src').val('amount');
     recalcFromAmount();
   });
 
-  $('#tendered_amount').on('input', function(){
-    recalcChange();
-  });
+  $('#tendered_amount').on('input', function(){ recalcChange(); });
 
-  function getPrice(){
-    return parseFloat($('[name="price"]').val() || 0);
-  }
-  function getGallons(){
-    return parseFloat($('#gallons').val() || 0);
-  }
-  function getAmount(){
-    return parseFloat($('#amount').val() || 0);
-  }
+  function getPrice(){ return parseFloat($('[name="price"]').val() || 0); }
+  function getGallons(){ return parseFloat($('#gallons').val() || 0); }
+  function getAmount(){ return parseFloat($('#amount').val() || 0); }
 
   function recalcFromGallons(){
     const price = getPrice();
     const gal   = getGallons();
     if(gal > 0 && price > 0){
       const amount = round2(gal * price);
-      // Escribimos amount y total; NO tocamos gallons (es la fuente)
       $('#amount').val(amount ? amount.toFixed(2) : '');
       $('#total').val($('#amount').val());
     }else{
@@ -281,7 +274,6 @@
     const amount = getAmount();
     if(amount > 0 && price > 0){
       const gal = round3(amount / price);
-      // Escribimos gallons; NO recalculamos ni tocamos amount (es la fuente)
       $('#gallons').val(gal ? gal.toFixed(3) : '');
       $('#total').val($('#amount').val());
     }else{
@@ -292,14 +284,13 @@
 
   function recalcChange(){
     const t = $('#type').val();
-    if(t !== '1') return; // solo efectivo
+    if(t !== '1') return;
     const total    = parseFloat($('#total').val() || 0);
     const tendered = parseFloat($('#tendered_amount').val() || 0);
     const change   = round2(tendered - total);
     $('#change').val(Number.isFinite(change) ? change.toFixed(2) : '');
   }
 
-  // --------- Pago con Tarjeta (simulado) ----------
   $(document).on('click', '#btnPayCard', function(){
     const gal = parseFloat($('#gallons').val()||0);
     const total = parseFloat($('#total').val()||0);
@@ -310,7 +301,7 @@
     uni_modal('Pago con Tarjeta','index.php?url=sales/cardModal','');
   });
 
-  // Guardar transacción
+  // Botón guardar
   $('#transaction-save-btn').click(function(){
     if(($('[name="petrol_type_id"]').val()||0) <= 0){
       alert("Seleccione gasolina.");
@@ -319,22 +310,21 @@
     $('#transaction-form').submit();
   });
 
+  // Submit
   $('#transaction-form').submit(function(e){
     e.preventDefault();
 
-    // Reafirma la fuente antes de enviar (por si acaso)
     if (lastEdited === 'amount') $('#src').val('amount');
     else if (lastEdited === 'gallons') $('#src').val('gallons');
-    else $('#src').val('gallons'); // default
+    else $('#src').val('gallons');
 
-    // Validaciones rápidas
     const gal   = parseFloat($('#gallons').val()||0);
     const total = parseFloat($('#total').val()||0);
     if(gal <= 0){ alert("Galones debe ser > 0."); return; }
     if(total <= 0){ alert("Total debe ser > 0."); return; }
 
     const payType = $('#type').val();
-    if(payType === '1'){ // efectivo
+    if(payType === '1'){
       const change = parseFloat($('#change').val()||0);
       if(change < 0){ alert("Pago recibido menor al total."); $('#tendered_amount').focus(); return; }
     }
@@ -360,12 +350,25 @@
       },
       success: resp=>{
         if(resp.status=='success'){
-          setTimeout(()=>{ uni_modal("RECIBO","index.php?url=sales/receipt/"+resp.transaction_id) }, 400);
+          // 1) Armar mensaje
+          let msg = 'Venta realizada con éxito.';
+          if (resp.new_customer === true && resp.customer_fullname) {
+            msg += '<br><small>Cliente <b>'+ $('<div>').text(resp.customer_fullname).html() + '</b> registrado.</small>';
+          }
+
+          // 2) Mostrar modal OK. Al OK => abrir recibo
+          $('#ok_sale_msg').html(msg);
+          const m = new bootstrap.Modal(document.getElementById('ok_sale_modal'));
+          $('#ok_sale_btn').off('click').on('click', function(){
+            m.hide();
+            setTimeout(()=>{ uni_modal("RECIBO","index.php?url=sales/receipt/"+resp.transaction_id) }, 150);
+          });
+          m.show();
         }else{
           _el.addClass('alert alert-danger').text(resp.msg || 'Error');
+          _this.prepend(_el).hide().show('slow');
+          $('#transaction-save-btn').attr('disabled',false);
         }
-        _this.prepend(_el).hide().show('slow');
-        $('#transaction-save-btn').attr('disabled',false);
       }
     });
   });

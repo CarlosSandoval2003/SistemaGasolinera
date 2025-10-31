@@ -7,7 +7,7 @@
         <div class="modal-body">
         </div>
         <div class="modal-footer py-1">
-            <button type="button" class="btn btn-sm rounded-0 btn-primary" id='submit' onclick="$('#uni_modal form').submit()">Save</button>
+            <button type="button" class="btn btn-sm rounded-0 btn-primary" id='submit' onclick="$('#uni_modal form').submit()">Guardar</button>
             <button type="button" class="btn btn-sm rounded-0 btn-secondary" data-bs-dismiss="modal">Cerrar</button>
         </div>
         </div>
@@ -22,8 +22,7 @@
         <div class="modal-body">
         </div>
         <div class="modal-footer py-1">
-            <button type="button" class="btn btn-sm rounded-0 btn-primary" id='submit' onclick="$('#uni_modal_secondary form').submit()">Save</button>
-            <button type="button" class="btn btn-sm rounded-0 btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+
         </div>
         </div>
         </div>

@@ -17,7 +17,7 @@ class Supplier extends Database
         $params = [];
 
         if ($q !== '') {
-            $sql .= " AND (code LIKE :q OR name LIKE :q OR contact LIKE :q OR email LIKE :q)";
+            $sql .= " AND (code LIKE :q OR name LIKE :q OR contact LIKE :q OR email LIKE :q OR address LIKE :q)";
             $params[':q'] = "%$q%";
         }
         if ($status !== null) {
@@ -38,11 +38,49 @@ class Supplier extends Database
         return $r ?: null;
     }
 
+    /**
+     * Verifica duplicados por nombre, contacto y email (ignorando un ID opcional).
+     * Devuelve ['has'=>bool, 'name'=>bool, 'contact'=>bool, 'email'=>bool]
+     * - No considera duplicado cuando los campos vienen vacíos (contact/email opcionales).
+     */
+    public function checkDuplicates(string $name, ?string $contact, ?string $email, ?int $ignoreId = null): array {
+        $pdo = $this->getConnection();
+        $res = ['has'=>false, 'name'=>false, 'contact'=>false, 'email'=>false];
+
+        // Nombre (requerido)
+        $sql = "SELECT 1 FROM supplier_list WHERE name = :v";
+        $p = [':v'=>$name];
+        if ($ignoreId !== null) { $sql .= " AND supplier_id <> :id"; $p[':id']=$ignoreId; }
+        $st = $pdo->prepare($sql); $st->execute($p);
+        if ($st->fetchColumn()) { $res['has']=true; $res['name']=true; }
+
+        // Contacto (si viene)
+        if ($contact !== null && $contact !== '') {
+            $sql = "SELECT 1 FROM supplier_list WHERE contact = :v";
+            $p = [':v'=>$contact];
+            if ($ignoreId !== null) { $sql .= " AND supplier_id <> :id"; $p[':id']=$ignoreId; }
+            $st = $pdo->prepare($sql); $st->execute($p);
+            if ($st->fetchColumn()) { $res['has']=true; $res['contact']=true; }
+        }
+
+        // Email (si viene)
+        if ($email !== null && $email !== '') {
+            $sql = "SELECT 1 FROM supplier_list WHERE email = :v";
+            $p = [':v'=>$email];
+            if ($ignoreId !== null) { $sql .= " AND supplier_id <> :id"; $p[':id']=$ignoreId; }
+            $st = $pdo->prepare($sql); $st->execute($p);
+            if ($st->fetchColumn()) { $res['has']=true; $res['email']=true; }
+        }
+
+        return $res;
+    }
+
     public function save(array $d): bool {
         $pdo = $this->getConnection();
+
         if (!empty($d['supplier_id'])) {
             $sql = "UPDATE supplier_list 
-                    SET code=:code,name=:name,contact=:contact,email=:email,address=:address,status=:status 
+                    SET code=:code, name=:name, contact=:contact, email=:email, address=:address, status=:status 
                     WHERE supplier_id=:supplier_id";
             $params = [
                 ':code'=>$d['code'], ':name'=>$d['name'], ':contact'=>$d['contact'],
@@ -57,6 +95,7 @@ class Supplier extends Database
                 ':email'=>$d['email'], ':address'=>$d['address'], ':status'=>$d['status']
             ];
         }
+
         $st = $pdo->prepare($sql);
         return $st->execute($params);
     }

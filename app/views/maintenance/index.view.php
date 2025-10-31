@@ -3,8 +3,6 @@
     <h3 class="card-title">Mantenimiento de Gasolina</h3>
     <div class="card-tools align-middle">
       <button class="btn btn-dark btn-sm py-1 rounded-0" type="button" id="new_petrol_type">Nueva Gasolina</button>
-      <button class="btn btn-primary btn-sm py-1 rounded-0" type="button" id="new_container">Nuevo Contenedor</button>
-      <button class="btn btn-secondary btn-sm py-1 rounded-0" type="button" id="transfer_container">Transferir</button>
     </div>
   </div>
 
@@ -69,13 +67,13 @@
 $(function(){
   // ---- GASOLINA ----
   $('#new_petrol_type, #new_petrol_type_btn').click(function(){
-    uni_modal('Nueva Gasolina',"index.php?url=petroltype/manage",'mid-large');
+    uni_modal('Nueva Gasolina',"index.php?url=petrolType/manage",'mid-large');
   });
   $('.edit_petrol_type').click(function(){
-    uni_modal('Editar Gasolina',"index.php?url=petroltype/manage&id=" + $(this).data('id'),'mid-large');
+    uni_modal('Editar Gasolina',"index.php?url=petrolType/manage&id=" + $(this).data('id'),'mid-large');
   });
   $('.view_petrol_type').click(function(){
-    uni_modal('Detalle de Gasolina',"index.php?url=petroltype/viewPetrol&id=" + $(this).data('id'),'');
+    uni_modal('Detalle de Gasolina',"index.php?url=petrolType/viewPetrol&id=" + $(this).data('id'),'');
   });
   $('.delete_petrol_type').click(function(){
     _conf("¿Eliminar <b>"+$(this).data('name')+"</b>?", 'delete_petrol_type', [$(this).data('id')]);

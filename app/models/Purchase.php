@@ -162,6 +162,41 @@ class Purchase extends Database
         $st->execute($p);
         return $st->fetchAll(PDO::FETCH_ASSOC);
     }
+    
+    /** ¿Existe ya el código? */
+private function orderCodeExists(PDO $pdo, string $code): bool {
+    $st = $pdo->prepare("SELECT 1 FROM compras_orden WHERE codigo = ? LIMIT 1");
+    $st->execute([$code]);
+    return (bool)$st->fetchColumn();
+}
+
+/** Genera un código único tipo OC-YYYYMM-#### evitando colisiones */
+private function genUniqueOrderCode(PDO $pdo): string {
+    $ym    = date('Ym');
+    $start = date('Y-m-01');
+    $end   = date('Y-m-01', strtotime('+1 month'));
+
+    // Tomamos el mayor sufijo existente del mes y le sumamos 1
+    $st = $pdo->prepare("
+        SELECT COALESCE(MAX(CAST(RIGHT(codigo, 4) AS UNSIGNED)), 0) AS max_seq
+        FROM compras_orden
+        WHERE fecha >= ? AND fecha < ?
+    ");
+    $st->execute([$start, $end]);
+    $seq = ((int)$st->fetchColumn()) + 1;
+
+    // Ensayar hasta que no exista (protege contra inserts paralelos / pruebas manuales)
+    // Le ponemos un límite razonable para evitar loops infinitos
+    for ($i = 0; $i < 50; $i++) {
+        $code = sprintf("OC-%s-%04d", $ym, $seq);
+        if (!$this->orderCodeExists($pdo, $code)) {
+            return $code;
+        }
+        $seq++; // si existía (p. ej. metido a mano), probamos el siguiente
+    }
+
+    throw new \Exception("No se pudo generar un código único para la orden (intente de nuevo).");
+}
 
     private function genOrderCode(): string {
         $ym = date('Ym');
@@ -207,7 +242,7 @@ public function saveOrder(array $header, array $items, int $user_id): int {
         }
         unset($it);
         $total  = $subtotal + $impuestos;
-        $codigo = $this->genOrderCode();
+        $codigo = $this->genUniqueOrderCode($pdo);
 
         // 3) Insert header (estatus inicial SOLICITADO)
         $hs = $pdo->prepare("INSERT INTO compras_orden
